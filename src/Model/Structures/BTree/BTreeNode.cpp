@@ -2,16 +2,41 @@
 
 #include <algorithm>
 #include <stdexcept>
-#include <utility>
 
-// ---------------------------------------------------------------------------
-// Construção
-// ---------------------------------------------------------------------------
+namespace {
 
-template <typename Key, typename Compare>
-BTreeNode<Key, Compare>::BTreeNode(size_type minDegree, bool leaf, Compare comp)
-    : minDegree_(minDegree), leaf_(leaf), comp_(std::move(comp)) {
-    if (minDegree_ < 2) {
+void checkIndex(std::size_t index, std::size_t limit, const char* what) {
+    if (index >= limit) {
+        throw std::out_of_range(std::string("BTreeNode: indice de ") + what +
+                                " fora do intervalo (" + std::to_string(index) +
+                                " >= " + std::to_string(limit) + ")");
+    }
+}
+
+bool fail(std::string* error, const std::string& message) {
+    if (error != nullptr) {
+        *error = message;
+    }
+    return false;
+}
+
+} // namespace
+
+BTreeNode::BTreeNode(std::size_t minDegree, bool leaf)
+    : minDegree_(minDegree), leaf_(leaf) {
+    if (minDegree < 2) {
+        throw std::invalid_argument("BTreeNode: o grau minimo deve ser >= 2");
+    }
+    // Evita realocações: o nó nunca excede essas capacidades.
+    keys_.reserve(maxKeys());
+    if (!leaf_) {
+        children_.reserve(maxChildren());
+    }
+}
+
+BTreeNode::BTreeNode(std::size_t minDegree, bool leaf)
+    : minDegree_(minDegree), leaf_(leaf) {
+    if (minDegree < 2) {
         throw std::invalid_argument("BTreeNode: o grau minimo deve ser >= 2");
     }
     keys_.reserve(maxKeys());
@@ -20,161 +45,114 @@ BTreeNode<Key, Compare>::BTreeNode(size_type minDegree, bool leaf, Compare comp)
     }
 }
 
-// ---------------------------------------------------------------------------
-// Consultas de estado
-// ---------------------------------------------------------------------------
+// ---- Consultas de estado ----------------------------------------------
 
-template <typename Key, typename Compare>
-bool BTreeNode<Key, Compare>::isLeaf() const noexcept {
-    return leaf_;
-}
+bool BTreeNode::isLeaf() const noexcept { return leaf_; }
+bool BTreeNode::isFull() const noexcept { return keys_.size() == maxKeys(); }
+bool BTreeNode::isEmpty() const noexcept { return keys_.empty(); }
+std::size_t BTreeNode::keyCount() const noexcept { return keys_.size(); }
+std::size_t BTreeNode::childCount() const noexcept { return children_.size(); }
 
-template <typename Key, typename Compare>
-bool BTreeNode<Key, Compare>::isFull() const noexcept {
-    return keys_.size() >= maxKeys();
-}
+std::size_t BTreeNode::minDegree() const noexcept { return minDegree_; }
+std::size_t BTreeNode::maxKeys() const noexcept { return 2 * minDegree_ - 1; }
+std::size_t BTreeNode::maxChildren() const noexcept { return 2 * minDegree_; }
 
-template <typename Key, typename Compare>
-bool BTreeNode<Key, Compare>::isEmpty() const noexcept {
-    return keys_.empty();
-}
+// ---- Busca --------------------------------------------------------------
 
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::keyCount() const noexcept {
-    return keys_.size();
-}
-
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::childCount() const noexcept {
-    return children_.size();
-}
-
-// ---------------------------------------------------------------------------
-// Chaves
-// ---------------------------------------------------------------------------
-
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::findKey(const Key& key, bool* found) const {
-    const auto it = std::lower_bound(keys_.begin(), keys_.end(), key, comp_);
-    const size_type index = static_cast<size_type>(it - keys_.begin());
-    if (found != nullptr) {
-        *found = (it != keys_.end()) && !comp_(key, *it);
+std::optional<std::size_t> BTreeNode::findKey(const Key& key) const {
+    const std::size_t index = lowerBound(key);
+    if (index < keys_.size() && !(key < keys_[index])) {
+        return index;
     }
-    return index;
+    return std::nullopt;
 }
 
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::insertKey(Key key) {
+std::size_t BTreeNode::lowerBound(const Key& key) const {
+    return static_cast<std::size_t>(
+        std::lower_bound(keys_.begin(), keys_.end(), key) - keys_.begin());
+}
+
+// ---- Modificação de chaves ----------------------------------------------
+
+std::size_t BTreeNode::insertKey(const Key& key) {
     if (isFull()) {
         throw std::length_error("BTreeNode::insertKey: no cheio");
     }
-    bool found = false;
-    const size_type index = findKey(key, &found);
-    if (found) {
+    const std::size_t index = lowerBound(key);
+    if (index < keys_.size() && !(key < keys_[index])) {
         throw std::invalid_argument("BTreeNode::insertKey: chave duplicada");
     }
-    keys_.insert(keys_.begin() + static_cast<std::ptrdiff_t>(index),
-                 std::move(key));
+    keys_.insert(keys_.begin() + static_cast<std::ptrdiff_t>(index), key);
     return index;
 }
 
-template <typename Key, typename Compare>
-Key BTreeNode<Key, Compare>::removeKey(size_type index) {
+BTreeNode::Key BTreeNode::removeKey(std::size_t index) {
     if (index >= keys_.size()) {
-        throw std::out_of_range("BTreeNode::removeKey: indice fora do intervalo");
+        throw std::out_of_range("BTreeNode::removeKey: indice invalido");
     }
-    Key removed = std::move(keys_[index]);
+    const Key removed = keys_[index];
     keys_.erase(keys_.begin() + static_cast<std::ptrdiff_t>(index));
     return removed;
 }
 
-template <typename Key, typename Compare>
-const Key& BTreeNode<Key, Compare>::getKey(size_type index) const {
-    if (index >= keys_.size()) {
-        throw std::out_of_range("BTreeNode::getKey: indice fora do intervalo");
-    }
-    return keys_[index];
-}
+// ---- Modificação de filhos ----------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Filhos
-// ---------------------------------------------------------------------------
-
-template <typename Key, typename Compare>
-void BTreeNode<Key, Compare>::insertChild(size_type index, NodePtr child) {
+void BTreeNode::insertChild(std::size_t index, BTreeNode* child) {
     if (leaf_) {
-        throw std::logic_error("BTreeNode::insertChild: folhas nao possuem filhos");
+        throw std::logic_error("BTreeNode::insertChild: folha nao possui filhos");
     }
-    if (!child) {
+    if (child == nullptr) {
         throw std::invalid_argument("BTreeNode::insertChild: filho nulo");
     }
-    if (child->minDegree_ != minDegree_) {
-        throw std::invalid_argument(
-            "BTreeNode::insertChild: grau minimo do filho difere do pai");
+    if (index > children_.size()) {
+        throw std::out_of_range("BTreeNode::insertChild: indice invalido");
     }
     if (children_.size() >= maxChildren()) {
-        throw std::length_error("BTreeNode::insertChild: numero maximo de filhos atingido");
+        throw std::length_error("BTreeNode::insertChild: numero maximo de filhos");
     }
-    if (index > children_.size()) {
-        throw std::out_of_range("BTreeNode::insertChild: indice fora do intervalo");
-    }
-    children_.insert(children_.begin() + static_cast<std::ptrdiff_t>(index),
-                     std::move(child));
+    children_.insert(children_.begin() + static_cast<std::ptrdiff_t>(index), child);
 }
 
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::NodePtr
-BTreeNode<Key, Compare>::removeChild(size_type index) {
+BTreeNode* BTreeNode::removeChild(std::size_t index) {
     if (index >= children_.size()) {
-        throw std::out_of_range("BTreeNode::removeChild: indice fora do intervalo");
+        throw std::out_of_range("BTreeNode::removeChild: indice invalido");
     }
-    NodePtr removed = std::move(children_[index]);
+    BTreeNode* removed = children_[index];
     children_.erase(children_.begin() + static_cast<std::ptrdiff_t>(index));
     return removed;
 }
 
-template <typename Key, typename Compare>
-BTreeNode<Key, Compare>* BTreeNode<Key, Compare>::getChild(size_type index) {
-    if (index >= children_.size()) {
-        throw std::out_of_range("BTreeNode::getChild: indice fora do intervalo");
+// ---- Acesso ---------------------------------------------------------------
+
+const BTreeNode::Key& BTreeNode::getKey(std::size_t index) const {
+    if (index >= keys_.size()) {
+        throw std::out_of_range("BTreeNode::getKey: indice invalido");
     }
-    return children_[index].get();
+    return keys_[index];
 }
 
-template <typename Key, typename Compare>
-const BTreeNode<Key, Compare>*
-BTreeNode<Key, Compare>::getChild(size_type index) const {
+BTreeNode* BTreeNode::getChild(std::size_t index) {
     if (index >= children_.size()) {
-        throw std::out_of_range("BTreeNode::getChild: indice fora do intervalo");
+        throw std::out_of_range("BTreeNode::getChild: indice invalido");
     }
-    return children_[index].get();
+    return children_[index];
 }
 
-// ---------------------------------------------------------------------------
-// Manutenção
-// ---------------------------------------------------------------------------
+const BTreeNode* BTreeNode::getChild(std::size_t index) const {
+    if (index >= children_.size()) {
+        throw std::out_of_range("BTreeNode::getChild: indice invalido");
+    }
+    return children_[index];
+}
 
-template <typename Key, typename Compare>
-void BTreeNode<Key, Compare>::clear() noexcept {
+void BTreeNode::clear() noexcept {
     keys_.clear();
-    children_.clear();  // unique_ptr destrói recursivamente as subárvores
+    children_.clear();
 }
 
-template <typename Key, typename Compare>
-bool BTreeNode<Key, Compare>::validate(std::string* error) const {
-    long leafDepth = -1;  // profundidade da primeira folha encontrada
-    return validateSubtree(nullptr, nullptr, 0, leafDepth, error);
-}
+// ---- Validação ------------------------------------------------------------
 
-template <typename Key, typename Compare>
-bool BTreeNode<Key, Compare>::validateSubtree(const Key* lowerBound,
-                                              const Key* upperBound,
-                                              size_type depth, long& leafDepth,
-                                              std::string* error) const {
+bool BTreeNode::validate(std::string* error) const {
     const auto fail = [error](const char* message) {
         if (error != nullptr) {
             *error = message;
@@ -183,70 +161,30 @@ bool BTreeNode<Key, Compare>::validateSubtree(const Key* lowerBound,
     };
 
     if (keys_.size() > maxKeys()) {
-        return fail("no excede o numero maximo de chaves (2t - 1)");
+        return fail("numero de chaves excede 2t - 1");
     }
-
-    for (size_type i = 0; i < keys_.size(); ++i) {
-        if (i > 0 && !comp_(keys_[i - 1], keys_[i])) {
-            return fail("chaves fora de ordem ou duplicadas");
-        }
-        if (lowerBound != nullptr && !comp_(*lowerBound, keys_[i])) {
-            return fail("chave menor ou igual ao separador inferior do pai");
-        }
-        if (upperBound != nullptr && !comp_(keys_[i], *upperBound)) {
-            return fail("chave maior ou igual ao separador superior do pai");
+    for (std::size_t i = 1; i < keys_.size(); ++i) {
+        if (!(keys_[i - 1] < keys_[i])) {
+            return fail("chaves nao estao estritamente crescentes");
         }
     }
-
     if (leaf_) {
         if (!children_.empty()) {
             return fail("no folha possui filhos");
         }
-        if (leafDepth < 0) {
-            leafDepth = static_cast<long>(depth);
-        } else if (leafDepth != static_cast<long>(depth)) {
-            return fail("folhas em profundidades diferentes");
-        }
         return true;
     }
-
-    if (keys_.empty() && children_.empty()) {
-        return true;  // no interno recem-criado, ainda sem conteudo
+    if (children_.size() > maxChildren()) {
+        return fail("numero de filhos excede 2t");
     }
-    if (children_.size() != keys_.size() + 1) {
-        return fail("no interno deve ter (numero de chaves + 1) filhos");
+    if (!(children_.empty() && keys_.empty()) &&
+        children_.size() != keys_.size() + 1) {
+        return fail("no interno deve ter keyCount() + 1 filhos");
     }
-
-    for (size_type i = 0; i < children_.size(); ++i) {
-        const BTreeNode* child = children_[i].get();
+    for (const BTreeNode* child : children_) {
         if (child == nullptr) {
-            return fail("filho nulo encontrado");
-        }
-        if (child->minDegree_ != minDegree_) {
-            return fail("filho com grau minimo diferente do pai");
-        }
-        const Key* lo = (i == 0) ? lowerBound : &keys_[i - 1];
-        const Key* hi = (i == keys_.size()) ? upperBound : &keys_[i];
-        if (!child->validateSubtree(lo, hi, depth + 1, leafDepth, error)) {
-            return false;
+            return fail("no interno possui filho nulo");
         }
     }
     return true;
 }
-
-// ---------------------------------------------------------------------------
-// Auxiliares privados
-// ---------------------------------------------------------------------------
-
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::maxKeys() const noexcept {
-    return 2 * minDegree_ - 1;
-}
-
-template <typename Key, typename Compare>
-typename BTreeNode<Key, Compare>::size_type
-BTreeNode<Key, Compare>::maxChildren() const noexcept {
-    return 2 * minDegree_;
-}
-

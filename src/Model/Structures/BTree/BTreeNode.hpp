@@ -2,139 +2,132 @@
 #define BTREE_NODE
 
 #include <cstddef>
-#include <functional>
-#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 /**
- * Nó de uma Árvore B (B-Tree) de grau mínimo t (convenção CLRS).
+ * Nó de uma B-Tree de grau mínimo t (t >= 2).
  *
- * Invariantes de capacidade:
- *   - número máximo de chaves  : 2t - 1
- *   - número máximo de filhos  : 2t
- *   - nó interno consistente   : filhos == chaves + 1
- *   - nó folha                 : nenhum filho
+ * Capacidades derivadas de t:
+ *   - máximo de chaves  : 2t - 1
+ *   - máximo de filhos  : 2t
  *
- * O nó é o dono exclusivo de seus filhos (std::unique_ptr), portanto é
- * move-only. A regra de mínimo de chaves (t - 1) depende de o nó ser ou não
- * a raiz, informação que pertence à árvore e não ao nó; por isso validate()
- * não a verifica.
+ * Responsabilidade: armazenar chaves ordenadas e ponteiros para filhos,
+ * mantendo as invariantes locais do nó. Algoritmos de B-Tree (split, merge,
+ * redistribuição, busca recursiva, etc.) pertencem à classe BTree.
  *
- * Nota de organização: por ser um template, a implementação (BTreeNode.cpp)
- * é incluída ao final deste header. Não é necessário compilar o .cpp
- * separadamente (fazê-lo é inofensivo, pois ambos possuem include guards).
+ * Propriedade de memória: o nó NÃO é dono dos filhos. Os ponteiros são
+ * apenas referenciados; criar e destruir os nós filhos é responsabilidade
+ * de quem usa a classe (a BTree). Por isso removeChild() devolve o ponteiro
+ * e clear() apenas esquece os filhos, sem deletá-los.
+ *
+ * Erros de uso (índice inválido, nó cheio, chave duplicada, etc.) são
+ * reportados por exceções da biblioteca padrão.
  */
-template <typename Key, typename Compare = std::less<Key>>
 class BTreeNode {
 public:
-    using key_type = Key;
-    using size_type = std::size_t;
-    using NodePtr = std::unique_ptr<BTreeNode>;
+    /// Tipo da chave armazenada. Precisa suportar operator<.
+    using Key = int;
 
     /**
-     * @param minDegree grau mínimo t (>= 2).
-     * @param leaf      indica se o nó é folha.
+     * @param minDegree grau mínimo t da árvore (>= 2).
+     * @param leaf      true se o nó é folha.
      * @throws std::invalid_argument se minDegree < 2.
      */
-    explicit BTreeNode(size_type minDegree, bool leaf = true,
-                       Compare comp = Compare());
+    BTreeNode(std::size_t minDegree, bool leaf);
 
-    BTreeNode(const BTreeNode&) = delete;
-    BTreeNode& operator=(const BTreeNode&) = delete;
-    BTreeNode(BTreeNode&&) noexcept = default;
-    BTreeNode& operator=(BTreeNode&&) noexcept = default;
-    ~BTreeNode() = default;
+    // ---- Consultas de estado ------------------------------------------
 
-    // ----- Consultas de estado -----
     bool isLeaf() const noexcept;
-    bool isFull() const noexcept;   // keyCount() == 2t - 1
-    bool isEmpty() const noexcept;  // keyCount() == 0
-    size_type keyCount() const noexcept;
-    size_type childCount() const noexcept;
+    bool isFull() const noexcept;   ///< keyCount() == 2t - 1
+    bool isEmpty() const noexcept;  ///< keyCount() == 0
+    std::size_t keyCount() const noexcept;
+    std::size_t childCount() const noexcept;
 
-    // ----- Chaves -----
+    std::size_t minDegree() const noexcept;
+    std::size_t maxKeys() const noexcept;
+    std::size_t maxChildren() const noexcept;
+
+    // ---- Busca ----------------------------------------------------------
+
+    /// Índice da chave igual a `key`, ou std::nullopt se não existir.
+    std::optional<std::size_t> findKey(const Key& key) const;
+
+    /// Índice da primeira chave >= `key` (keyCount() se todas forem menores).
+    /// Em nós internos, é também o índice do filho onde descer.
+    std::size_t lowerBound(const Key& key) const;
+
+    // ---- Modificação de chaves ------------------------------------------
 
     /**
-     * Retorna o índice da primeira chave que NÃO é menor que `key`
-     * (lower bound), ou keyCount() se todas forem menores.
-     * Se `found` não for nulo, recebe true quando a chave naquele índice
-     * é equivalente a `key`. Em um nó interno, o índice retornado também é
-     * o do filho para onde a busca deve descer quando a chave não existe.
-     */
-    size_type findKey(const Key& key, bool* found = nullptr) const;
-
-    /**
-     * Insere a chave mantendo a ordenação e retorna o índice de inserção.
+     * Insere `key` mantendo a ordenação.
+     * @return índice onde a chave foi inserida.
      * @throws std::length_error     se o nó estiver cheio.
      * @throws std::invalid_argument se a chave já existir no nó.
      */
-    size_type insertKey(Key key);
+    std::size_t insertKey(const Key& key);
 
     /**
-     * Remove e retorna a chave na posição `index`.
+     * Remove e devolve a chave na posição `index`.
      * @throws std::out_of_range se index >= keyCount().
      */
-    Key removeKey(size_type index);
+    Key removeKey(std::size_t index);
 
-    /** @throws std::out_of_range se index >= keyCount(). */
-    const Key& getKey(size_type index) const;
-
-    // ----- Filhos -----
+    // ---- Modificação de filhos ------------------------------------------
 
     /**
-     * Insere o filho na posição `index` (0 <= index <= childCount()).
+     * Insere `child` na posição `index` (0 <= index <= childCount()).
      * @throws std::logic_error      se o nó for folha.
-     * @throws std::invalid_argument se child for nulo ou tiver grau mínimo
-     *                               diferente do deste nó.
-     * @throws std::length_error     se o nó já tiver 2t filhos.
+     * @throws std::invalid_argument se child for nulo.
      * @throws std::out_of_range     se index > childCount().
+     * @throws std::length_error     se já houver maxChildren() filhos.
      */
-    void insertChild(size_type index, NodePtr child);
+    void insertChild(std::size_t index, BTreeNode* child);
 
     /**
-     * Remove o filho na posição `index` e transfere sua posse ao chamador.
+     * Remove o filho na posição `index` e devolve seu ponteiro
+     * (o nó removido NÃO é destruído).
      * @throws std::out_of_range se index >= childCount().
      */
-    NodePtr removeChild(size_type index);
+    BTreeNode* removeChild(std::size_t index);
 
-    /** @throws std::out_of_range se index >= childCount(). */
-    BTreeNode* getChild(size_type index);
-    const BTreeNode* getChild(size_type index) const;
+    // ---- Acesso -----------------------------------------------------------
 
-    // ----- Manutenção -----
+    /// @throws std::out_of_range se index >= keyCount().
+    const Key& getKey(std::size_t index) const;
 
-    /** Remove todas as chaves e destrói todos os filhos (o flag de folha é mantido). */
+    /// @throws std::out_of_range se index >= childCount().
+    BTreeNode* getChild(std::size_t index);
+    const BTreeNode* getChild(std::size_t index) const;
+
+    /// Remove todas as chaves e todos os filhos (sem destruir os filhos).
     void clear() noexcept;
 
+    // ---- Validação --------------------------------------------------------
+
     /**
-     * Verifica a consistência do nó e de toda a sua subárvore:
-     *   - limite máximo de chaves;
-     *   - chaves estritamente ordenadas;
-     *   - folha sem filhos; interno com filhos == chaves + 1
-     *     (ou totalmente vazio);
-     *   - filhos não nulos, com mesmo grau mínimo;
-     *   - chaves de cada filho dentro dos separadores do pai;
-     *   - todas as folhas na mesma profundidade.
+     * Verifica as invariantes locais do nó:
+     *   - keyCount() <= 2t - 1;
+     *   - chaves estritamente crescentes;
+     *   - folha não possui filhos;
+     *   - nó interno possui keyCount() + 1 filhos não nulos
+     *     (ou nenhum, se também estiver sem chaves);
+     *   - childCount() <= 2t.
+     *
+     * O número mínimo de chaves não é verificado aqui, pois depende de o
+     * nó ser a raiz, informação que só a BTree possui.
      *
      * @param error se não nulo, recebe a descrição da primeira violação.
-     * @return true se tudo estiver consistente.
+     * @return true se o nó é válido.
      */
     bool validate(std::string* error = nullptr) const;
 
 private:
-    bool validateSubtree(const Key* lowerBound, const Key* upperBound,
-                         size_type depth, long& leafDepth,
-                         std::string* error) const;
-
-    size_type maxKeys() const noexcept;
-    size_type maxChildren() const noexcept;
-
-    size_type minDegree_;
+    std::size_t minDegree_;
     bool leaf_;
-    Compare comp_;
     std::vector<Key> keys_;
-    std::vector<NodePtr> children_;
+    std::vector<BTreeNode*> children_;
 };
 
-#endif  // BTREE_NODE
+#endif // BTREE_NODE

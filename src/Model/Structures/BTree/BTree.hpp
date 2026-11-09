@@ -3,123 +3,137 @@
 
 #include <cstddef>
 #include <functional>
-#include <memory>
 #include <optional>
-#include <string>
-#include <utility>
 #include <vector>
 
+#include "BTreeNode.hpp"
+
 /**
- * Árvore B (chave -> valor) com grau mínimo t (t >= 2).
+ * B-Tree de grau mínimo t (t >= 2) que armazena chaves únicas.
  *
- * Invariantes:
- *  - Todo nó, exceto a raiz, possui entre t-1 e 2t-1 chaves.
- *  - A raiz possui entre 1 e 2t-1 chaves (ou 0, se a árvore estiver vazia).
- *  - Um nó interno com k chaves possui exatamente k+1 filhos.
- *  - Todas as folhas estão na mesma profundidade.
+ * Invariantes (CLRS):
+ *   - todo nó, exceto a raiz, possui entre t-1 e 2t-1 chaves;
+ *   - a raiz possui entre 1 e 2t-1 chaves (ou a árvore está vazia);
+ *   - todas as folhas estão na mesma profundidade.
  *
- * O nó da árvore é um detalhe de implementação (struct privada),
- * definido apenas em BTree.cpp.
+ * Estratégia: inserção e remoção em passada única (descendo pela árvore),
+ * dividindo nós cheios na inserção e garantindo ao menos t chaves nos nós
+ * visitados na remoção. Não é necessário subir de volta para rebalancear.
+ *
+ * Propriedade de memória: a BTree é dona de todos os nós (BTreeNode não é).
+ * A classe é movível, mas não copiável.
  */
 class BTree {
 public:
-    using Key = int;
-    using Value = std::string;
+    using Key = BTreeNode::Key;
 
-    struct Entry {
-        Key key;
-        Value value;
-    };
-
-    explicit BTree(std::size_t minimumDegree = 3);
+    /// @throws std::invalid_argument se minDegree < 2.
+    explicit BTree(std::size_t minDegree = 2);
     ~BTree();
 
     BTree(const BTree&) = delete;
     BTree& operator=(const BTree&) = delete;
+    BTree(BTree&& other) noexcept;
+    BTree& operator=(BTree&& other) noexcept;
 
-    // ---- Operações públicas ----
+    // ---- Operações principais ------------------------------------------
 
-    /// Retorna o valor associado à chave, ou std::nullopt se ela não existir.
-    std::optional<Value> search(Key key) const;
+    /// Insere a chave. @return false se ela já existia (árvore inalterada).
+    bool insert(const Key& key);
 
-    /// Insere o par. Retorna false (sem alterar a árvore) se a chave já existir.
-    bool insert(Key key, Value value);
+    /// Remove a chave. @return false se ela não existia (árvore inalterada).
+    bool remove(const Key& key);
 
-    /// Remove a chave. Retorna false se ela não existir.
-    bool remove(Key key);
+    bool contains(const Key& key) const;
 
-    /// Substitui o valor de uma chave existente. Retorna false se ela não existir.
-    bool update(Key key, Value value);
+    /// Destrói todos os nós; a árvore passa a ficar vazia.
+    void clear() noexcept;
 
-    /// Menor / maior entrada da árvore (std::nullopt se vazia).
-    std::optional<Entry> findMin() const;
-    std::optional<Entry> findMax() const;
-
-    /// Percorre a árvore em ordem crescente de chaves.
-    void traverse(const std::function<void(const Key&, const Value&)>& visit) const;
-
-    /// Retorna, em ordem crescente, todas as entradas com lower <= chave <= upper.
-    /// Lança std::invalid_argument se lower > upper.
-    std::vector<Entry> rangeSearch(Key lower, Key upper) const;
-
-    std::size_t size() const noexcept;
     bool empty() const noexcept;
 
+    /// Número de chaves armazenadas.
+    std::size_t size() const noexcept;
+
+    /// Número de níveis da árvore: 0 se vazia, 1 se só a raiz (folha).
+    std::size_t height() const noexcept;
+
+    std::size_t minDegree() const noexcept;
+
+    // ---- Consultas ordenadas ---------------------------------------------
+
+    /// Menor chave, ou std::nullopt se a árvore estiver vazia.
+    std::optional<Key> findMin() const;
+
+    /// Maior chave, ou std::nullopt se a árvore estiver vazia.
+    std::optional<Key> findMax() const;
+
+    /// Menor chave >= `key`, ou std::nullopt se não existir.
+    std::optional<Key> lowerBound(const Key& key) const;
+
+    /// Menor chave > `key`, ou std::nullopt se não existir.
+    std::optional<Key> upperBound(const Key& key) const;
+
+    /// Todas as chaves em [low, high], em ordem crescente.
+    /// Devolve vetor vazio se low > high.
+    std::vector<Key> rangeSearch(const Key& low, const Key& high) const;
+
+    /// Visita todas as chaves em ordem crescente.
+    void traverseInOrder(const std::function<void(const Key&)>& visit) const;
+
 private:
-    struct Node;
+    // ---- Inserção ----------------------------------------------------------
 
-    // ---- Operações estruturais ----
+    /// Divide o filho cheio `parent->getChild(index)`; a chave mediana sobe
+    /// para `parent`, que não pode estar cheio.
+    void splitChild(BTreeNode* parent, std::size_t index);
 
-    /// Divide o filho cheio parent->children[childIndex] em dois nós,
-    /// promovendo a chave mediana para o pai.
-    void splitChild(Node* parent, std::size_t childIndex);
+    /// Insere em uma subárvore cuja raiz não está cheia.
+    void insertNonFull(BTreeNode* node, const Key& key);
 
-    /// Funde children[leftIndex] e children[leftIndex + 1], rebaixando
-    /// a chave separadora do pai para o nó resultante.
-    void mergeChildren(Node* parent, std::size_t leftIndex);
+    // ---- Remoção -----------------------------------------------------------
 
-    /// Empresta uma chave do irmão esquerdo (rotação à direita via pai).
-    void borrowFromLeft(Node* parent, std::size_t childIndex);
+    /// Remove `key` (que deve existir) da subárvore de `node`.
+    /// Pré-condição: `node` é a raiz ou possui >= t chaves.
+    void removeFromNode(BTreeNode* node, const Key& key);
 
-    /// Empresta uma chave do irmão direito (rotação à esquerda via pai).
-    void borrowFromRight(Node* parent, std::size_t childIndex);
+    /// Remove a chave de índice `index` de um nó interno.
+    void removeFromInternalNode(BTreeNode* node, std::size_t index);
 
-    /// Substitui a chave interna parent->entries[keyIndex] pelo predecessor
-    /// ou sucessor (removendo-o da subárvore de origem). Retorna false se
-    /// nenhum dos dois filhos adjacentes pode ceder uma chave.
-    bool promoteKey(Node* node, std::size_t keyIndex);
+    /// Une os filhos `index` e `index + 1` (mais a chave separadora) num só.
+    void mergeChildren(BTreeNode* parent, std::size_t index);
 
-    /// Se a raiz ficou sem chaves e não é folha, seu único filho vira a raiz
-    /// (a altura da árvore diminui em 1).
+    /// Move uma chave do irmão esquerdo, via pai, para o filho `index`.
+    void borrowFromPrevious(BTreeNode* parent, std::size_t index);
+
+    /// Move uma chave do irmão direito, via pai, para o filho `index`.
+    void borrowFromNext(BTreeNode* parent, std::size_t index);
+
+    /// Garante que o filho `index` tenha >= t chaves (empresta ou funde).
+    /// @return índice atual do filho que contém a subárvore original
+    ///         (muda para index - 1 se houve fusão com o irmão esquerdo).
+    std::size_t fillChild(BTreeNode* parent, std::size_t index);
+
+    /// Maior chave da subárvore à esquerda de `node->getKey(index)`.
+    Key getPredecessor(const BTreeNode* node, std::size_t index) const;
+
+    /// Menor chave da subárvore à direita de `node->getKey(index)`.
+    Key getSuccessor(const BTreeNode* node, std::size_t index) const;
+
+    /// Se a raiz ficou sem chaves, a substitui pelo único filho (ou a
+    /// destrói, se for folha).
     void collapseRoot();
 
-    /// Garante que parent->children[childIndex] tenha ao menos t chaves,
-    /// emprestando ou fundindo. Retorna o índice do filho em que a
-    /// descida deve continuar (pode mudar após uma fusão com o irmão esquerdo).
-    std::size_t rebalance(Node* parent, std::size_t childIndex);
+    // ---- Auxiliares ----------------------------------------------------------
 
-    // ---- Auxiliares ----
+    static void destroySubtree(BTreeNode* node) noexcept;
+    static void traverseNode(const BTreeNode* node,
+                             const std::function<void(const Key&)>& visit);
+    static void rangeSearchNode(const BTreeNode* node, const Key& low,
+                                const Key& high, std::vector<Key>& out);
 
-    void insertNonFull(Node* node, Entry entry);
-    bool removeFromNode(Node* node, Key key);
-    bool removeFromInternal(Node* node, std::size_t keyIndex);
-
-    Entry* findEntry(Key key) const;
-    bool collectRange(const Node* node, Key lower, Key upper,
-                      std::vector<Entry>& out) const;
-    void traverseNode(const Node* node,
-                      const std::function<void(const Key&, const Value&)>& visit) const;
-
-    static std::size_t lowerBound(const Node* node, Key key);
-    static const Entry& leftmostEntry(const Node* node);
-    static const Entry& rightmostEntry(const Node* node);
-
-    std::size_t minKeys() const noexcept { return minimumDegree_ - 1; }
-    std::size_t maxKeys() const noexcept { return 2 * minimumDegree_ - 1; }
-
-    std::size_t minimumDegree_;
-    std::size_t size_;
-    std::unique_ptr<Node> root_;
+    std::size_t minDegree_;
+    BTreeNode* root_ = nullptr;
+    std::size_t size_ = 0;
 };
 
 #endif // BTREE

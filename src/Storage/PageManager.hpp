@@ -2,52 +2,49 @@
 #define PAGE_MANAGER
 
 #include <cstdint>
-#include <map>
-#include <string>
+#include <memory>
 #include <vector>
 
-namespace PageManager {
+#include "Page.hpp"
 
-using PageId = std::uint32_t;
-
-struct Page {
-    PageId id{0};
-    std::string title;
-    std::string content;
-};
-
-// Gerencia o ciclo de vida de páginas em memória.
-// Não é thread-safe: sincronize externamente se houver acesso concorrente.
+/**
+ * Gerenciador de Pages em memória.
+ *
+ * Responsável apenas por alocar e liberar Pages. Cada Page recebe um pageId
+ * único; ids de Pages liberadas são reaproveitados em alocações futuras.
+ *
+ * O PageManager é o dono das Pages: ponteiros devolvidos por allocatePage()
+ * tornam-se inválidos após freePage() do respectivo pageId ou após a
+ * destruição do PageManager.
+ */
 class PageManager {
 public:
-    // Cria uma página e retorna o id gerado (sempre > 0).
-    // Lança std::invalid_argument se o título estiver vazio.
-    PageId createPage(std::string title, std::string content = {});
+    PageManager() = default;
 
-    // Remove a página. Retorna true se ela existia e foi removida.
-    bool removePage(PageId pageId);
+    PageManager(const PageManager&) = delete;
+    PageManager& operator=(const PageManager&) = delete;
 
-    // Remove todas as páginas. Os ids já usados não são reaproveitados.
-    void clearPages();
+    /**
+     * Aloca uma Page nova e vazia (já inicializada com seu pageId).
+     * Reaproveita o id de uma Page previamente liberada, se houver.
+     * @return Ponteiro para a Page alocada; nullptr se não for possível
+     *         alocar (falta de memória ou esgotamento de ids).
+     */
+    Page* allocatePage();
 
-    // Retorna ponteiro somente leitura para a página, ou nullptr se não existir.
-    // O ponteiro é invalidado por removePage/clearPages da mesma página.
-    const Page* getPage(PageId pageId) const;
-
-    // Retorna cópia de todas as páginas, ordenadas por id.
-    std::vector<Page> getAllPages() const;
-
-    bool hasPage(PageId pageId) const;
-
-    // Retorna true se a página existe e está consistente
-    // (id armazenado coincide com a chave e o título não é vazio).
-    bool validatePage(PageId pageId) const;
+    /**
+     * Libera a Page identificada por pageId e disponibiliza o id para reuso.
+     * @return true em caso de sucesso; false se o pageId não existir ou a
+     *         Page já estiver liberada.
+     */
+    bool freePage(std::uint32_t pageId);
 
 private:
-    PageId nextId_{1};
-    std::map<PageId, Page> pages_;
+    /** Indexado por pageId. Entrada nula indica Page liberada. */
+    std::vector<std::unique_ptr<Page>> pages_;
+
+    /** Pilha de pageIds liberados, disponíveis para reaproveitamento. */
+    std::vector<std::uint32_t> freePageIds_;
 };
 
-}  // namespace PageManager
-
-#endif 
+#endif // PAGE_MANAGER

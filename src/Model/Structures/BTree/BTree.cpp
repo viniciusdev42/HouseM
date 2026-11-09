@@ -1,362 +1,409 @@
 #include "BTree.hpp"
 
-#include <algorithm>
-#include <iterator>
+#include <memory>
 #include <stdexcept>
+#include <utility>
 
-// ---------------------------------------------------------------------------
-// Nó (detalhe de implementação, visível apenas neste arquivo)
-// ---------------------------------------------------------------------------
-struct BTree::Node {
-    explicit Node(bool isLeaf) : leaf(isLeaf) {}
+// ===========================================================================
+// Ciclo de vida
+// ===========================================================================
 
-    bool leaf;
-    std::vector<Entry> entries;
-    std::vector<std::unique_ptr<Node>> children;
-};
-
-// ---------------------------------------------------------------------------
-// Construção / destruição
-// ---------------------------------------------------------------------------
-BTree::BTree(std::size_t minimumDegree)
-    : minimumDegree_(minimumDegree), size_(0), root_(nullptr) {
-    if (minimumDegree_ < 2) {
+BTree::BTree(std::size_t minDegree) : minDegree_(minDegree) {
+    if (minDegree < 2) {
         throw std::invalid_argument("BTree: o grau minimo deve ser >= 2");
     }
-    root_ = std::make_unique<Node>(true);
 }
 
-BTree::~BTree() = default;
+BTree::~BTree() { clear(); }
 
-// ---------------------------------------------------------------------------
-// Consultas públicas
-// ---------------------------------------------------------------------------
-std::optional<BTree::Value> BTree::search(Key key) const {
-    const Entry* entry = findEntry(key);
-    if (entry == nullptr) {
+BTree::BTree(BTree&& other) noexcept
+    : minDegree_(other.minDegree_),
+      root_(std::exchange(other.root_, nullptr)),
+      size_(std::exchange(other.size_, 0)) {}
+
+BTree& BTree::operator=(BTree&& other) noexcept {
+    if (this != &other) {
+        clear();
+        minDegree_ = other.minDegree_;
+        root_ = std::exchange(other.root_, nullptr);
+        size_ = std::exchange(other.size_, 0);
+    }
+    return *this;
+}
+
+void BTree::destroySubtree(BTreeNode* node) noexcept {
+    if (node == nullptr) {
+        return;
+    }
+    while (node->childCount() > 0) {
+        destroySubtree(node->removeChild(node->childCount() - 1));
+    }
+    delete node;
+}
+
+void BTree::clear() noexcept {
+    destroySubtree(root_);
+    root_ = nullptr;
+    size_ = 0;
+}
+
+// ===========================================================================
+// Estado
+// ===========================================================================
+
+bool BTree::empty() const noexcept { return size_ == 0; }
+std::size_t BTree::size() const noexcept { return size_; }
+std::size_t BTree::minDegree() const noexcept { return minDegree_; }
+
+std::size_t BTree::height() const noexcept {
+    std::size_t levels = 0;
+    for (const BTreeNode* node = root_; node != nullptr;
+         node = node->isLeaf() ? nullptr : node->getChild(0)) {
+        ++levels;
+    }
+    return levels;
+}
+
+// ===========================================================================
+// Busca
+// ===========================================================================
+
+bool BTree::contains(const Key& key) const {
+    const BTreeNode* node = root_;
+    while (node != nullptr) {
+        const std::size_t index = node->lowerBound(key);
+        if (index < node->keyCount() && !(key < node->getKey(index))) {
+            return true;
+        }
+        node = node->isLeaf() ? nullptr : node->getChild(index);
+    }
+    return false;
+}
+
+std::optional<BTree::Key> BTree::findMin() const {
+    if (root_ == nullptr) {
         return std::nullopt;
     }
-    return entry->value;
-}
-
-bool BTree::update(Key key, Value value) {
-    Entry* entry = findEntry(key);
-    if (entry == nullptr) {
-        return false;
+    const BTreeNode* node = root_;
+    while (!node->isLeaf()) {
+        node = node->getChild(0);
     }
-    entry->value = std::move(value);
-    return true;
+    return node->getKey(0);
 }
 
-std::optional<BTree::Entry> BTree::findMin() const {
-    if (empty()) {
+std::optional<BTree::Key> BTree::findMax() const {
+    if (root_ == nullptr) {
         return std::nullopt;
     }
-    return leftmostEntry(root_.get());
-}
-
-std::optional<BTree::Entry> BTree::findMax() const {
-    if (empty()) {
-        return std::nullopt;
+    const BTreeNode* node = root_;
+    while (!node->isLeaf()) {
+        node = node->getChild(node->childCount() - 1);
     }
-    return rightmostEntry(root_.get());
+    return node->getKey(node->keyCount() - 1);
 }
 
-void BTree::traverse(
-    const std::function<void(const Key&, const Value&)>& visit) const {
-    traverseNode(root_.get(), visit);
-}
-
-std::vector<BTree::Entry> BTree::rangeSearch(Key lower, Key upper) const {
-    if (lower > upper) {
-        throw std::invalid_argument("BTree::rangeSearch: lower > upper");
+std::optional<BTree::Key> BTree::lowerBound(const Key& key) const {
+    std::optional<Key> candidate;
+    const BTreeNode* node = root_;
+    while (node != nullptr) {
+        const std::size_t index = node->lowerBound(key);
+        if (index < node->keyCount()) {
+            candidate = node->getKey(index);
+            if (!(key < *candidate)) {
+                return candidate;  // chave igual encontrada
+            }
+        }
+        node = node->isLeaf() ? nullptr : node->getChild(index);
     }
-    std::vector<Entry> result;
-    collectRange(root_.get(), lower, upper, result);
+    return candidate;
+}
+
+std::optional<BTree::Key> BTree::upperBound(const Key& key) const {
+    std::optional<Key> candidate;
+    const BTreeNode* node = root_;
+    while (node != nullptr) {
+        std::size_t index = node->lowerBound(key);
+        // Se a chave existe neste nó, a primeira estritamente maior está
+        // à direita dela.
+        if (index < node->keyCount() && !(key < node->getKey(index))) {
+            ++index;
+        }
+        if (index < node->keyCount()) {
+            candidate = node->getKey(index);
+        }
+        node = node->isLeaf() ? nullptr : node->getChild(index);
+    }
+    return candidate;
+}
+
+std::vector<BTree::Key> BTree::rangeSearch(const Key& low,
+                                           const Key& high) const {
+    std::vector<Key> result;
+    if (root_ != nullptr && !(high < low)) {
+        rangeSearchNode(root_, low, high, result);
+    }
     return result;
 }
 
-std::size_t BTree::size() const noexcept { return size_; }
+void BTree::rangeSearchNode(const BTreeNode* node, const Key& low,
+                            const Key& high, std::vector<Key>& out) {
+    const std::size_t count = node->keyCount();
+    for (std::size_t i = node->lowerBound(low); i < count; ++i) {
+        if (!node->isLeaf()) {
+            rangeSearchNode(node->getChild(i), low, high, out);
+        }
+        if (high < node->getKey(i)) {
+            return;  // todo o resto é maior que `high`
+        }
+        out.push_back(node->getKey(i));
+    }
+    if (!node->isLeaf()) {
+        rangeSearchNode(node->getChild(count), low, high, out);
+    }
+}
 
-bool BTree::empty() const noexcept { return size_ == 0; }
+void BTree::traverseInOrder(const std::function<void(const Key&)>& visit) const {
+    if (root_ != nullptr && visit) {
+        traverseNode(root_, visit);
+    }
+}
 
-// ---------------------------------------------------------------------------
+void BTree::traverseNode(const BTreeNode* node,
+                         const std::function<void(const Key&)>& visit) {
+    const std::size_t count = node->keyCount();
+    for (std::size_t i = 0; i < count; ++i) {
+        if (!node->isLeaf()) {
+            traverseNode(node->getChild(i), visit);
+        }
+        visit(node->getKey(i));
+    }
+    if (!node->isLeaf()) {
+        traverseNode(node->getChild(count), visit);
+    }
+}
+
+// ===========================================================================
 // Inserção
-// ---------------------------------------------------------------------------
-bool BTree::insert(Key key, Value value) {
-    if (findEntry(key) != nullptr) {
+// ===========================================================================
+
+bool BTree::insert(const Key& key) {
+    if (contains(key)) {
         return false;
     }
 
-    // Raiz cheia: cria nova raiz e divide a antiga (única forma de a árvore crescer).
-    if (root_->entries.size() == maxKeys()) {
-        auto newRoot = std::make_unique<Node>(false);
-        newRoot->children.push_back(std::move(root_));
-        root_ = std::move(newRoot);
-        splitChild(root_.get(), 0);
+    if (root_ == nullptr) {
+        auto leaf = std::make_unique<BTreeNode>(minDegree_, true);
+        leaf->insertKey(key);
+        root_ = leaf.release();
+        size_ = 1;
+        return true;
     }
 
-    insertNonFull(root_.get(), Entry{key, std::move(value)});
+    if (root_->isFull()) {
+        // A árvore cresce em altura apenas aqui, pela raiz.
+        auto newRoot = std::make_unique<BTreeNode>(minDegree_, false);
+        newRoot->insertChild(0, root_);
+        splitChild(newRoot.get(), 0);
+        root_ = newRoot.release();
+    }
+
+    insertNonFull(root_, key);
     ++size_;
     return true;
 }
 
-void BTree::insertNonFull(Node* node, Entry entry) {
-    std::size_t index = lowerBound(node, entry.key);
+void BTree::splitChild(BTreeNode* parent, std::size_t index) {
+    const std::size_t t = minDegree_;
+    BTreeNode* child = parent->getChild(index);
+    auto sibling = std::make_unique<BTreeNode>(t, child->isLeaf());
 
-    if (node->leaf) {
-        node->entries.insert(node->entries.begin() + static_cast<std::ptrdiff_t>(index),
-                             std::move(entry));
+    // Chaves [t, 2t-2] vão para o irmão; a chave t-1 (mediana) sobe.
+    for (std::size_t j = 0; j < t - 1; ++j) {
+        sibling->insertKey(child->getKey(t + j));
+    }
+    if (!child->isLeaf()) {
+        for (std::size_t j = 0; j < t; ++j) {
+            sibling->insertChild(j, child->getChild(t + j));
+        }
+    }
+
+    for (std::size_t j = 0; j < t - 1; ++j) {
+        child->removeKey(child->keyCount() - 1);
+    }
+    if (!child->isLeaf()) {
+        for (std::size_t j = 0; j < t; ++j) {
+            child->removeChild(child->childCount() - 1);
+        }
+    }
+    const Key median = child->removeKey(t - 1);
+
+    parent->insertChild(index + 1, sibling.get());
+    sibling.release();
+    parent->insertKey(median);
+}
+
+void BTree::insertNonFull(BTreeNode* node, const Key& key) {
+    while (!node->isLeaf()) {
+        std::size_t index = node->lowerBound(key);
+        if (node->getChild(index)->isFull()) {
+            splitChild(node, index);
+            if (node->getKey(index) < key) {
+                ++index;
+            }
+        }
+        node = node->getChild(index);
+    }
+    node->insertKey(key);
+}
+
+// ===========================================================================
+// Remoção
+// ===========================================================================
+
+bool BTree::remove(const Key& key) {
+    // Verificar antes evita reestruturar a árvore numa remoção que falharia.
+    if (!contains(key)) {
+        return false;
+    }
+    removeFromNode(root_, key);
+    --size_;
+    collapseRoot();
+    return true;
+}
+
+void BTree::removeFromNode(BTreeNode* node, const Key& key) {
+    const std::size_t index = node->lowerBound(key);
+    const bool found =
+        index < node->keyCount() && !(key < node->getKey(index));
+
+    if (found) {
+        if (node->isLeaf()) {
+            node->removeKey(index);
+        } else {
+            removeFromInternalNode(node, index);
+        }
         return;
     }
 
-    if (node->children[index]->entries.size() == maxKeys()) {
-        splitChild(node, index);
-        if (entry.key > node->entries[index].key) {
-            ++index;
-        }
+    // A chave existe (pré-condição), logo não pode estar ausente numa folha.
+    std::size_t childIndex = index;
+    if (node->getChild(childIndex)->keyCount() < minDegree_) {
+        childIndex = fillChild(node, childIndex);
     }
-    insertNonFull(node->children[index].get(), std::move(entry));
+    removeFromNode(node->getChild(childIndex), key);
 }
 
-void BTree::splitChild(Node* parent, std::size_t childIndex) {
-    const std::size_t t = minimumDegree_;
-    Node* full = parent->children[childIndex].get();
-    auto sibling = std::make_unique<Node>(full->leaf);
+void BTree::removeFromInternalNode(BTreeNode* node, std::size_t index) {
+    const Key key = node->getKey(index);
+    BTreeNode* left = node->getChild(index);
+    BTreeNode* right = node->getChild(index + 1);
 
-    // Chaves [t, 2t-2] vão para o novo irmão; a mediana (t-1) sobe.
-    sibling->entries.assign(std::make_move_iterator(full->entries.begin() + static_cast<std::ptrdiff_t>(t)),
-                            std::make_move_iterator(full->entries.end()));
-    Entry median = std::move(full->entries[t - 1]);
-    full->entries.resize(t - 1, Entry{});
-
-    if (!full->leaf) {
-        sibling->children.assign(
-            std::make_move_iterator(full->children.begin() + static_cast<std::ptrdiff_t>(t)),
-            std::make_move_iterator(full->children.end()));
-        full->children.resize(t);
-    }
-
-    parent->entries.insert(parent->entries.begin() + static_cast<std::ptrdiff_t>(childIndex),
-                           std::move(median));
-    parent->children.insert(parent->children.begin() + static_cast<std::ptrdiff_t>(childIndex) + 1,
-                            std::move(sibling));
-}
-
-// ---------------------------------------------------------------------------
-// Remoção
-// ---------------------------------------------------------------------------
-bool BTree::remove(Key key) {
-    const bool removed = removeFromNode(root_.get(), key);
-    collapseRoot();
-    if (removed) {
-        --size_;
-    }
-    return removed;
-}
-
-bool BTree::removeFromNode(Node* node, Key key) {
-    std::size_t index = lowerBound(node, key);
-    const bool found = index < node->entries.size() && node->entries[index].key == key;
-
-    if (found) {
-        if (node->leaf) {
-            node->entries.erase(node->entries.begin() + static_cast<std::ptrdiff_t>(index));
-            return true;
-        }
-        return removeFromInternal(node, index);
-    }
-
-    if (node->leaf) {
-        return false;
-    }
-
-    // Descida preventiva: o filho precisa ter ao menos t chaves antes de entrar nele.
-    if (node->children[index]->entries.size() < minimumDegree_) {
-        index = rebalance(node, index);
-    }
-    return removeFromNode(node->children[index].get(), key);
-}
-
-bool BTree::removeFromInternal(Node* node, std::size_t keyIndex) {
-    if (promoteKey(node, keyIndex)) {
-        return true;
-    }
-
-    // Ambos os filhos adjacentes têm t-1 chaves: funde e remove da subárvore resultante.
-    const Key key = node->entries[keyIndex].key;
-    mergeChildren(node, keyIndex);
-    return removeFromNode(node->children[keyIndex].get(), key);
-}
-
-bool BTree::promoteKey(Node* node, std::size_t keyIndex) {
-    Node* left = node->children[keyIndex].get();
-    Node* right = node->children[keyIndex + 1].get();
-
-    if (left->entries.size() >= minimumDegree_) {
-        Entry predecessor = rightmostEntry(left);
-        node->entries[keyIndex] = predecessor;
-        removeFromNode(left, predecessor.key);
-        return true;
-    }
-
-    if (right->entries.size() >= minimumDegree_) {
-        Entry successor = leftmostEntry(right);
-        node->entries[keyIndex] = successor;
-        removeFromNode(right, successor.key);
-        return true;
-    }
-
-    return false;
-}
-
-void BTree::mergeChildren(Node* parent, std::size_t leftIndex) {
-    Node* left = parent->children[leftIndex].get();
-    std::unique_ptr<Node> right = std::move(parent->children[leftIndex + 1]);
-
-    left->entries.push_back(std::move(parent->entries[leftIndex]));
-    left->entries.insert(left->entries.end(),
-                         std::make_move_iterator(right->entries.begin()),
-                         std::make_move_iterator(right->entries.end()));
-
-    if (!left->leaf) {
-        left->children.insert(left->children.end(),
-                              std::make_move_iterator(right->children.begin()),
-                              std::make_move_iterator(right->children.end()));
-    }
-
-    parent->entries.erase(parent->entries.begin() + static_cast<std::ptrdiff_t>(leftIndex));
-    parent->children.erase(parent->children.begin() + static_cast<std::ptrdiff_t>(leftIndex) + 1);
-}
-
-void BTree::borrowFromLeft(Node* parent, std::size_t childIndex) {
-    Node* child = parent->children[childIndex].get();
-    Node* left = parent->children[childIndex - 1].get();
-
-    child->entries.insert(child->entries.begin(), std::move(parent->entries[childIndex - 1]));
-    parent->entries[childIndex - 1] = std::move(left->entries.back());
-    left->entries.pop_back();
-
-    if (!child->leaf) {
-        child->children.insert(child->children.begin(), std::move(left->children.back()));
-        left->children.pop_back();
+    if (left->keyCount() >= minDegree_) {
+        const Key predecessor = getPredecessor(node, index);
+        node->removeKey(index);
+        node->insertKey(predecessor);  // mantém a posição: está entre vizinhas
+        removeFromNode(left, predecessor);
+    } else if (right->keyCount() >= minDegree_) {
+        const Key successor = getSuccessor(node, index);
+        node->removeKey(index);
+        node->insertKey(successor);
+        removeFromNode(right, successor);
+    } else {
+        mergeChildren(node, index);
+        removeFromNode(node->getChild(index), key);
     }
 }
 
-void BTree::borrowFromRight(Node* parent, std::size_t childIndex) {
-    Node* child = parent->children[childIndex].get();
-    Node* right = parent->children[childIndex + 1].get();
+BTree::Key BTree::getPredecessor(const BTreeNode* node,
+                                 std::size_t index) const {
+    const BTreeNode* current = node->getChild(index);
+    while (!current->isLeaf()) {
+        current = current->getChild(current->childCount() - 1);
+    }
+    return current->getKey(current->keyCount() - 1);
+}
 
-    child->entries.push_back(std::move(parent->entries[childIndex]));
-    parent->entries[childIndex] = std::move(right->entries.front());
-    right->entries.erase(right->entries.begin());
+BTree::Key BTree::getSuccessor(const BTreeNode* node,
+                               std::size_t index) const {
+    const BTreeNode* current = node->getChild(index + 1);
+    while (!current->isLeaf()) {
+        current = current->getChild(0);
+    }
+    return current->getKey(0);
+}
 
-    if (!child->leaf) {
-        child->children.push_back(std::move(right->children.front()));
-        right->children.erase(right->children.begin());
+std::size_t BTree::fillChild(BTreeNode* parent, std::size_t index) {
+    const bool hasPrevious = index > 0;
+    const bool hasNext = index < parent->keyCount();  // filho index+1 existe
+
+    if (hasPrevious && parent->getChild(index - 1)->keyCount() >= minDegree_) {
+        borrowFromPrevious(parent, index);
+        return index;
+    }
+    if (hasNext && parent->getChild(index + 1)->keyCount() >= minDegree_) {
+        borrowFromNext(parent, index);
+        return index;
+    }
+    if (hasNext) {
+        mergeChildren(parent, index);
+        return index;
+    }
+    mergeChildren(parent, index - 1);
+    return index - 1;
+}
+
+void BTree::borrowFromPrevious(BTreeNode* parent, std::size_t index) {
+    BTreeNode* child = parent->getChild(index);
+    BTreeNode* sibling = parent->getChild(index - 1);
+
+    // Separador desce para o filho; a maior chave do irmão sobe.
+    const Key separator = parent->removeKey(index - 1);
+    child->insertKey(separator);
+    const Key siblingKey = sibling->removeKey(sibling->keyCount() - 1);
+    parent->insertKey(siblingKey);
+
+    if (!child->isLeaf()) {
+        BTreeNode* moved = sibling->removeChild(sibling->childCount() - 1);
+        child->insertChild(0, moved);
     }
 }
 
-std::size_t BTree::rebalance(Node* parent, std::size_t childIndex) {
-    const bool hasLeft = childIndex > 0;
-    const bool hasRight = childIndex + 1 < parent->children.size();
+void BTree::borrowFromNext(BTreeNode* parent, std::size_t index) {
+    BTreeNode* child = parent->getChild(index);
+    BTreeNode* sibling = parent->getChild(index + 1);
 
-    if (hasLeft && parent->children[childIndex - 1]->entries.size() >= minimumDegree_) {
-        borrowFromLeft(parent, childIndex);
-        return childIndex;
+    // Separador desce para o filho; a menor chave do irmão sobe.
+    const Key separator = parent->removeKey(index);
+    child->insertKey(separator);
+    const Key siblingKey = sibling->removeKey(0);
+    parent->insertKey(siblingKey);
+
+    if (!child->isLeaf()) {
+        BTreeNode* moved = sibling->removeChild(0);
+        child->insertChild(child->childCount(), moved);
     }
+}
 
-    if (hasRight && parent->children[childIndex + 1]->entries.size() >= minimumDegree_) {
-        borrowFromRight(parent, childIndex);
-        return childIndex;
+void BTree::mergeChildren(BTreeNode* parent, std::size_t index) {
+    BTreeNode* left = parent->getChild(index);
+    std::unique_ptr<BTreeNode> right(parent->removeChild(index + 1));
+
+    const Key separator = parent->removeKey(index);
+    left->insertKey(separator);
+    for (std::size_t j = 0; j < right->keyCount(); ++j) {
+        left->insertKey(right->getKey(j));
     }
-
-    if (hasRight) {
-        mergeChildren(parent, childIndex);
-        return childIndex;
+    while (right->childCount() > 0) {
+        left->insertChild(left->childCount(), right->removeChild(0));
     }
-
-    mergeChildren(parent, childIndex - 1);
-    return childIndex - 1;
+    // `right` é destruído aqui; seus filhos já pertencem a `left`.
 }
 
 void BTree::collapseRoot() {
-    if (root_->entries.empty() && !root_->leaf) {
-        std::unique_ptr<Node> newRoot = std::move(root_->children.front());
-        root_ = std::move(newRoot);
+    if (root_ == nullptr || !root_->isEmpty()) {
+        return;
     }
-}
-
-// ---------------------------------------------------------------------------
-// Auxiliares
-// ---------------------------------------------------------------------------
-BTree::Entry* BTree::findEntry(Key key) const {
-    Node* node = root_.get();
-    while (node != nullptr) {
-        const std::size_t index = lowerBound(node, key);
-        if (index < node->entries.size() && node->entries[index].key == key) {
-            return &node->entries[index];
-        }
-        if (node->leaf) {
-            return nullptr;
-        }
-        node = node->children[index].get();
-    }
-    return nullptr;
-}
-
-std::size_t BTree::lowerBound(const Node* node, Key key) {
-    const auto it = std::lower_bound(
-        node->entries.begin(), node->entries.end(), key,
-        [](const Entry& entry, Key k) { return entry.key < k; });
-    return static_cast<std::size_t>(std::distance(node->entries.begin(), it));
-}
-
-const BTree::Entry& BTree::leftmostEntry(const Node* node) {
-    while (!node->leaf) {
-        node = node->children.front().get();
-    }
-    return node->entries.front();
-}
-
-const BTree::Entry& BTree::rightmostEntry(const Node* node) {
-    while (!node->leaf) {
-        node = node->children.back().get();
-    }
-    return node->entries.back();
-}
-
-void BTree::traverseNode(
-    const Node* node,
-    const std::function<void(const Key&, const Value&)>& visit) const {
-    for (std::size_t i = 0; i < node->entries.size(); ++i) {
-        if (!node->leaf) {
-            traverseNode(node->children[i].get(), visit);
-        }
-        visit(node->entries[i].key, node->entries[i].value);
-    }
-    if (!node->leaf) {
-        traverseNode(node->children.back().get(), visit);
-    }
-}
-
-// Retorna false quando uma chave > upper foi encontrada (encerra a busca cedo).
-bool BTree::collectRange(const Node* node, Key lower, Key upper,
-                         std::vector<Entry>& out) const {
-    std::size_t i = lowerBound(node, lower);
-
-    for (; i < node->entries.size(); ++i) {
-        if (!node->leaf && !collectRange(node->children[i].get(), lower, upper, out)) {
-            return false;
-        }
-        if (node->entries[i].key > upper) {
-            return false;
-        }
-        out.push_back(node->entries[i]);
-    }
-
-    if (!node->leaf) {
-        return collectRange(node->children[i].get(), lower, upper, out);
-    }
-    return true;
+    BTreeNode* oldRoot = root_;
+    root_ = oldRoot->isLeaf() ? nullptr : oldRoot->removeChild(0);
+    delete oldRoot;
 }

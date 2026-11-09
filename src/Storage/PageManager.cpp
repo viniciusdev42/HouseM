@@ -1,52 +1,50 @@
 #include "PageManager.hpp"
 
-#include <stdexcept>
-#include <utility>
+#include <limits>
+#include <new>
 
-namespace PageManager {
+Page* PageManager::allocatePage() {
+    try {
+        // Reaproveita um id liberado, se houver.
+        if (!freePageIds_.empty()) {
+            const std::uint32_t pageId = freePageIds_.back();
 
-PageId PageManager::createPage(std::string title, std::string content) {
-    if (title.empty()) {
-        throw std::invalid_argument("PageManager::createPage: o titulo da pagina nao pode ser vazio");
+            auto page = std::make_unique<Page>();
+            page->init(pageId);
+
+            // Só consome o id da pilha depois que a alocação deu certo.
+            freePageIds_.pop_back();
+            pages_[pageId] = std::move(page);
+            return pages_[pageId].get();
+        }
+
+        // Sem ids livres: cria um novo id sequencial.
+        if (pages_.size() > std::numeric_limits<std::uint32_t>::max()) {
+            return nullptr; // ids esgotados
+        }
+        const auto pageId = static_cast<std::uint32_t>(pages_.size());
+
+        auto page = std::make_unique<Page>();
+        page->init(pageId);
+
+        pages_.push_back(std::move(page));
+        return pages_.back().get();
+    } catch (const std::bad_alloc&) {
+        return nullptr;
+    }
+}
+
+bool PageManager::freePage(std::uint32_t pageId) {
+    if (pageId >= pages_.size() || !pages_[pageId]) {
+        return false; // id inexistente ou Page já liberada
     }
 
-    const PageId id = nextId_++;
-    pages_.emplace(id, Page{id, std::move(title), std::move(content)});
-    return id;
-}
-
-bool PageManager::removePage(PageId pageId) {
-    return pages_.erase(pageId) > 0;
-}
-
-void PageManager::clearPages() {
-    pages_.clear();
-}
-
-const Page* PageManager::getPage(PageId pageId) const {
-    const auto it = pages_.find(pageId);
-    return it != pages_.end() ? &it->second : nullptr;
-}
-
-std::vector<Page> PageManager::getAllPages() const {
-    std::vector<Page> result;
-    result.reserve(pages_.size());
-    for (const auto& entry : pages_) {
-        result.push_back(entry.second);
+    try {
+        freePageIds_.push_back(pageId);
+    } catch (const std::bad_alloc&) {
+        return false; // Page preservada, estado consistente
     }
-    return result;
-}
 
-bool PageManager::hasPage(PageId pageId) const {
-    return pages_.find(pageId) != pages_.end();
+    pages_[pageId].reset();
+    return true;
 }
-
-bool PageManager::validatePage(PageId pageId) const {
-    const Page* page = getPage(pageId);
-    if (page == nullptr) {
-        return false;
-    }
-    return page->id == pageId && !page->title.empty();
-}
-
-}  // namespace PageManager
