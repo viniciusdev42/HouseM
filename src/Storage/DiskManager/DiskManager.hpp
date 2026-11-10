@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 
-#include "Page.hpp"
+#include "src/Storage/Page/Page.hpp"
 
 /**
  * Gerencia a leitura e escrita de Pages em um arquivo de dados em disco.

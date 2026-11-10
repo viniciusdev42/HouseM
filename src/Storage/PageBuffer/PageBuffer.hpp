@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Page.hpp"
+#include "src/Storage/Page/Page.hpp"
 
 /**
  * Abstração do armazenamento persistente das Pages (disco, arquivo, etc.).

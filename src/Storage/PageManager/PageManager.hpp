@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "Page.hpp"
+#include "src/Storage/Page/Page.hpp"
 
 /**
  * Gerenciador de Pages em memória.
