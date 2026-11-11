@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TASK
+#define TASK
 
 #include <array>
 #include <cctype>
@@ -12,7 +13,7 @@
 #include <string>
 #include <utility>
 
-namespace domain {
+namespace Task {
 
 // ---------------------------------------------------------------------------
 // TaskId: Value Object
@@ -165,4 +166,5 @@ private:
     std::optional<TimePoint> completedAt_;
 };
 
-}  // namespace domain
+}  // namespace Task
+#endif // TASK
