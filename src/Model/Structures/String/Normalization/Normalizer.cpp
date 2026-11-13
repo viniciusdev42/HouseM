@@ -243,8 +243,6 @@ std::u32string applyDiacriticRemoval(const std::u32string& input) {
     return compose(stripped);
 }
 
-}  // namespace
-
 Normalizer::Normalizer(UnicodeForm form) : form_(form) {}
 
 std::string Normalizer::normalizeUnicode(std::string_view utf8Text) const {

@@ -1,6 +1,6 @@
 #include "Tokenizer.hpp"
 
-/* Funções auxiliares (linkage interna, visíveis só neste arquivo) */
+/* --------- Funções auxiliares ------------ */
 
 namespace {
 
@@ -69,7 +69,7 @@ bool isConnector(char32_t cp) {
 
 } // namespace
 
-/* Tokenizer */
+/* ---------- Tokenizer ------------- */ 
 
 Tokenizer::Tokenizer(TokenizerOptions options) : options_(std::move(options)) {}
 

@@ -162,16 +162,4 @@ std::u32string applyDiacriticRemoval(const std::u32string& input);
 
 }  // namespace Details
 
-Normalizer::Normalizer(UnicodeForm form) : form_(form) {}
-
-std::string Normalizer::normalizeUnicode(std::string_view utf8Text) const;
-
-std::string Normalizer::caseFold(std::string_view utf8Text) const;
-
-std::string Normalizer::removeDiacritics(std::string_view utf8Text) const;
-
-std::string Normalizer::normalize(std::string_view utf8Text) const;
-
-bool Normalizer::equivalent(std::string_view lhs, std::string_view rhs) const;
-
 }  // namespace Normalizer
