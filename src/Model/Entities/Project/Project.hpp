@@ -1,5 +1,5 @@
-#ifndef ENTITIES_PROJECT
-#define ENTITIES_PROJECT
+#ifndef PROJECT
+#define PROJECT
 
 #include <chrono>
 #include <cstddef>
@@ -139,4 +139,4 @@ private:
 
 }  // namespace Project
 
-#endif
+#endif // PROJECT

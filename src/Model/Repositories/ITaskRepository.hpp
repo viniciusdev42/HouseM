@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Task.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
 
 namespace ITaskRepository {
 

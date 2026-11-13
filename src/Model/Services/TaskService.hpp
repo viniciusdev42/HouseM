@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "Model/Repositories/ITaskRepository.hpp"
-#include "Model/Entities/Task/Task.hpp"
+#include "src/Model/Repositories/ITaskRepository.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
 
 namespace TaskService {
 
@@ -73,4 +73,4 @@ private:
 
 }  // namespace TaskService
 
-#endif 
+#endif // TASK_SERVICE

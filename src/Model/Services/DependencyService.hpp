@@ -10,9 +10,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Model/Entities/Task/Task.hpp"
-#include "Model/Entities/Dependency/Dependency.hpp"
-#include "Model/Structures/Graph/Graph.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
+#include "src/Model/Entities/Dependency/Dependency.hpp"
+#include "src/Model/Structures/Graph/Graph.hpp"
 
 namespace Dependency {
 

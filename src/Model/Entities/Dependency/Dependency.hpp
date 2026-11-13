@@ -1,11 +1,11 @@
-#ifndef ENTITIES_DEPENDENCY
-#define ENTITIES_DEPENDENCY
+#ifndef DEPENDENCY
+#define DEPENDENCY
 
 #include <cstddef>
 #include <functional>
 #include <string>
 
-#include "Model/Entities/Task/Task.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
 
 namespace Dependency {
 
@@ -103,4 +103,4 @@ struct hash<Dependency::Dependency> {
 
 }  // namespace std
 
-#endif  // ENTITIES_DEPENDENCY
+#endif  // DEPENDENCY

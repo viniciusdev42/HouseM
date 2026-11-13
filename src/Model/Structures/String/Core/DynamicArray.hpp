@@ -29,7 +29,7 @@
 #include <type_traits>
 #include <utility>
 
-namespaceDynamicArray {
+namespace DynamicArray {
 
 // ============================================================================
 // 1. DynamicArray<T>
@@ -530,6 +530,6 @@ inline LevenshteinMatrix make_levenshtein_matrix(std::size_t length_a, std::size
 
 }  // namespace tables
 
-}  // namespaceDynamicArray
+}  // namespace DynamicArray
 
 #endif  // DYNAMIC_ARRAY

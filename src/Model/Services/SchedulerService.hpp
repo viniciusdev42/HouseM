@@ -7,7 +7,7 @@
 #include <set>
 #include <vector>
 
-#include "Model/Entities/Task/Task.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
 
 namespace SchedulerService {
 
@@ -123,4 +123,4 @@ private:
 
 }  // namespace SchedulerService
 
-#endif
+#endif // SCHEDULER_SERVICE

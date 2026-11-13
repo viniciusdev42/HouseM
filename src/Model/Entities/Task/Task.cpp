@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace domain {
+namespace Task {
 
 namespace {
 
@@ -119,4 +119,4 @@ void Task::ensureNotCompleted(const char* operation) const {
     }
 }
 
-}  // namespace domain
+}  // namespace Task

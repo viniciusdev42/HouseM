@@ -166,4 +166,4 @@ private:
     }
 };
 
-#endif
+#endif // SUFFIX_ARRAY

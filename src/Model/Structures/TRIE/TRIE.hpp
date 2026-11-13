@@ -152,4 +152,4 @@ private:
     std::unordered_map<TaskId, std::vector<std::string>> reverseIndex_;
 };
 
-#endif
+#endif // TRIE 
