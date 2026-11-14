@@ -1,8 +1,10 @@
 #include "BoyerMoore.hpp"
 
-namespace BoyerMoore {
+using BV = BoyerView;
+using BA = BoyerArray;
 
-BoyerMoore::BoyerMoore(std::string_view pattern) : pattern_(pattern) {
+/* pattern = objeto BoyerView ; pattern_ = std::string*/ 
+BoyerMoore BoyerMoore(BV pattern) : pattern_(pattern.data(),pattern.size()){ // Converte StringView pra std::string 
     if (pattern_.empty()) {
         throw std::invalid_argument("BoyerMoore: o padrao nao pode ser vazio.");
     }
@@ -10,7 +12,7 @@ BoyerMoore::BoyerMoore(std::string_view pattern) : pattern_(pattern) {
     build_good_suffix_table();
 }
 
-std::size_t BoyerMoore::find_first(std::string_view text) const noexcept {
+std::size_t BoyerMoore::find_first(BV text) const noexcept {
     std::size_t result = npos;
     search(text, [&result](std::size_t position) {
         result = position;
@@ -19,7 +21,7 @@ std::size_t BoyerMoore::find_first(std::string_view text) const noexcept {
     return result;
 }
 
-std::optional<std::size_t> BoyerMoore::find(std::string_view text) const noexcept {
+std::optional<std::size_t> BoyerMoore::find(BV text) const noexcept {
     const std::size_t position = find_first(text);
     if (position == npos) {
         return std::nullopt;
@@ -27,8 +29,8 @@ std::optional<std::size_t> BoyerMoore::find(std::string_view text) const noexcep
     return position;
 }
 
-std::vector<std::size_t> BoyerMoore::find_all(std::string_view text) const {
-    std::vector<std::size_t> positions;
+ BA find_all(BV text) const {
+    BA positions;
     search(text, [&positions](std::size_t position) {
         positions.push_back(position);
         return true;
@@ -36,7 +38,7 @@ std::vector<std::size_t> BoyerMoore::find_all(std::string_view text) const {
     return positions;
 }
 
-bool BoyerMoore::contains(std::string_view text) const noexcept {
+bool BoyerMoore::contains(BV text) const noexcept {
     return find_first(text) != npos;
 }
 
@@ -58,7 +60,7 @@ void BoyerMoore::build_bad_character_table() {
 void BoyerMoore::build_good_suffix_table() {
     const std::size_t m = pattern_.size();
     good_suffix_shift_.assign(m + 1, 0);
-    std::vector<std::size_t> border(m + 1, 0);
+   BA border(m + 1, 0);
 
     std::size_t i = m;
     std::size_t j = m + 1;
@@ -90,12 +92,10 @@ std::ptrdiff_t BoyerMoore::bad_character_shift(std::size_t mismatch_index, char 
     return static_cast<std::ptrdiff_t>(mismatch_index) - last_occurrence_[to_index(text_char)];
 }
 
-std::size_t find_first(std::string_view text, std::string_view pattern) {
-    return BoyerMoore(pattern).find_first(text);
+std::size_t find_first(BV text, BV pattern) {
+    return BV(pattern).find_first(text);
 }
 
-std::vector<std::size_t> find_all(std::string_view text, std::string_view pattern) {
-    return BoyerMoore(pattern).find_all(text);
+BA find_all(BV text, BV pattern) {
+    return BV(pattern).find_all(text);
 }
-
-}  // namespace BoyerMoore

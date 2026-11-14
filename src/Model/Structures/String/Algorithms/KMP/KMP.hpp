@@ -1,16 +1,21 @@
-#ifndef KMP_HPP
-#define KMP_HPP
+#ifndef KMP
+#define KMP
 
-#include <cstddef>
-#include <string_view>
-#include <vector>
+#include <cstddef> 
+#include <cstdint>
+
+#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
+#include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
+
+using KView = StringView::StringView;
+using DynamicK = DynamicArray::DynamicArray;
 
 namespace KMP {
 
-std::vector<int> computeLPS(std::string_view pattern);
+DynamicK::IndexArray computeLPS(KView pattern);
 
-std::vector<std::size_t> search(std::string_view text, std::string_view pattern);
+DynamicK::IndexArray search(KView text, KView pattern);
 
 }  // namespace KMP
 
-#endif  // KMP_HPP
+#endif  // KMP

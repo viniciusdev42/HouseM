@@ -1,9 +1,10 @@
 #include "KMP.hpp"
 
-namespace KMP {
+using KV = KView;
+using DK = DynamicK;
 
-std::vector<int> computeLPS(std::string_view pattern) {
-    std::vector<int> lps(pattern.size(), 0);
+DK::IndexArray computeLPS(KV pattern) {
+    DK::IndexArray lps(pattern.size(), 0);
 
     if (pattern.empty()) {
         return lps;
@@ -25,14 +26,14 @@ std::vector<int> computeLPS(std::string_view pattern) {
     return lps;
 }
 
-std::vector<std::size_t> search(std::string_view text, std::string_view pattern) {
-    std::vector<std::size_t> occurrences;
+DK::IndexArray search(KV text, KV pattern) {
+    DK::IndexArray occurrences;
 
     if (text.empty() || pattern.empty() || pattern.size() > text.size()) {
         return occurrences;
     }
 
-    const std::vector<int> lps = computeLPS(pattern);
+   DK::IndexArrays lps = computeLPS(pattern);
 
     std::size_t matched = 0;
     for (std::size_t i = 0; i < text.size(); ++i) {
@@ -52,5 +53,3 @@ std::vector<std::size_t> search(std::string_view text, std::string_view pattern)
 
     return occurrences;
 }
-
-}  // namespace KMP
