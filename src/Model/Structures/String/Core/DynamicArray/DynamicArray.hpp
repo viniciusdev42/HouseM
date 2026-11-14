@@ -1,19 +1,18 @@
 #ifndef DYNAMIC_ARRAY
 #define DYNAMIC_ARRAY
 
-// Dynamic Array (C++17, header-only) para armazenar caracteres, resultados de
-// operações e tabelas auxiliares de KMP, Boyer-Moore, Rabin-Karp e Levenshtein.
-//
-// Organização:
-//   1. DynamicArray<T>        -> contêiner genérico (núcleo)
-//   2. CharArray + text::     -> sequências de caracteres
-//   3. Matrix<T>              -> tabela 2D (Levenshtein) sobre DynamicArray
-//   4. Resultados             -> Match, MatchArray, IndexArray, DistanceArray
-//   5. Tabelas auxiliares     -> KmpTable, BoyerMooreTables, RabinKarpTable,
-//                                LevenshteinMatrix e suas fábricas em tables::
-//
-// Os algoritmos em si NÃO são implementados aqui: este arquivo fornece apenas
-// o armazenamento que eles utilizam.
+/* Dynamic Array para armazenar caracteres, resultados de
+    operações e tabelas auxiliares de KMP, Boyer-Moore, Rabin-Karp e Levenshtein.
+
+ Organização:
+   1. DynamicArray<T>        -> contêiner genérico (núcleo)
+   2. CharArray + text::     -> sequências de caracteres
+   3. Matrix<T>              -> tabela 2D (Levenshtein) sobre DynamicArray
+   4. Resultados             -> Match, MatchArray, IndexArray, DistanceArray
+   5. Tabelas auxiliares     -> KMPTable, BoyerMooreTables, RabinKarpTable,
+                                LevenshteinMatrix e suas fábricas em tables::
+
+ Este arquivo fornece apenas o armazenamento que eles utilizam.*/
 
 #include <algorithm>
 #include <cstddef>
@@ -25,12 +24,15 @@
 #include <new>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
-namespace DynamicArray {
+#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
 
+using ArrayView = StringView::StringView;
+
+namespace DynamicArray {
+  
 // ============================================================================
 // 1. DynamicArray<T>
 // ============================================================================
@@ -56,280 +58,119 @@ public:
 
     // Os construtores abaixo delegam ao padrão: assim, se uma exceção ocorrer
     // no corpo, o objeto já está "construído" e o destrutor libera a memória.
-    explicit DynamicArray(size_type count) : DynamicArray() { resize(count); }
+    explicit DynamicArray(size_type count);
 
-    DynamicArray(size_type count, const T& value) : DynamicArray() {
-        resize(count, value);
-    }
-
-    DynamicArray(std::initializer_list<T> values) : DynamicArray() {
-        reserve(values.size());
-        for (const T& element : values) emplace_back(element);
-    }
-
-    DynamicArray(const DynamicArray& other) : DynamicArray() {
-        reserve(other.size_);
-        for (const T& element : other) emplace_back(element);
-    }
-
-    DynamicArray(DynamicArray&& other) noexcept
-        : data_(std::exchange(other.data_, nullptr)),
-          size_(std::exchange(other.size_, 0)),
-          capacity_(std::exchange(other.capacity_, 0)) {}
-
+    DynamicArray(size_type count, const T& value);
+    
+    DynamicArray(std::initializer_list<T> values);
+    
+    DynamicArray(const DynamicArray& other);
+    
+    DynamicArray(DynamicArray&& other) noexcept;
+    
     // Copy-and-swap: garante garantia forte de exceção e trata auto-atribuição.
-    DynamicArray& operator=(const DynamicArray& other) {
-        DynamicArray copy(other);
-        swap(copy);
-        return *this;
-    }
-
-    DynamicArray& operator=(DynamicArray&& other) noexcept {
-        DynamicArray moved(std::move(other));
-        swap(moved);
-        return *this;
-    }
-
-    ~DynamicArray() {
-        destroy_range(data_, size_);
-        deallocate(data_, capacity_);
-    }
+    DynamicArray& operator=(const DynamicArray& other);
+    
+    DynamicArray& operator=(DynamicArray&& other) noexcept;
+  
+    ~DynamicArray();
 
     // --- Capacidade ---------------------------------------------------------
 
-    size_type size() const noexcept { return size_; }
-    size_type capacity() const noexcept { return capacity_; }
-    bool empty() const noexcept { return size_ == 0; }
+    size_type size() const noexcept;
+    size_type capacity() const noexcept;
+    bool empty() const noexcept;
 
-    static constexpr size_type max_size() noexcept {
-        return std::numeric_limits<size_type>::max() / sizeof(T);
-    }
+    static size_type max_size() noexcept;
 
     // Capacidade exata solicitada; nunca diminui.
-    void reserve(size_type new_capacity) {
-        if (new_capacity <= capacity_) return;
-        if (new_capacity > max_size()) {
-            throw std::length_error("DynamicArray::reserve: capacidade acima do maximo");
-        }
-        reallocate(new_capacity);
-    }
-
-    void shrink_to_fit() {
-        if (size_ == capacity_) return;
-        if (size_ == 0) {
-            deallocate(data_, capacity_);
-            data_ = nullptr;
-            capacity_ = 0;
-            return;
-        }
-        reallocate(size_);
-    }
+    void reserve(size_type new_capacity);
+    
+    void shrink_to_fit();
 
     // Redimensiona o tamanho lógico; novos elementos são value-initialized.
-    void resize(size_type count) {
-        resize_with(count, [](pointer slot) { ::new (static_cast<void*>(slot)) T(); });
-    }
-
-    void resize(size_type count, const T& value) {
-        // Cópia local: 'value' pode referenciar um elemento deste próprio array,
-        // que ficaria inválido caso ocorra realocação.
-        const T copy(value);
-        resize_with(count, [&copy](pointer slot) {
-            ::new (static_cast<void*>(slot)) T(copy);
-        });
-    }
-
+    void resize(size_type count);
+    
+    void resize(size_type count, const T& value);
+    
     // --- Acesso -------------------------------------------------------------
 
     // Sem verificação de limites (como std::vector); use at() quando preciso.
-    reference operator[](size_type index) noexcept { return data_[index]; }
-    const_reference operator[](size_type index) const noexcept { return data_[index]; }
+    reference operator[](size_type index) noexcept;
+    
+    const_reference operator[](size_type index) const noexcept;
 
-    reference at(size_type index) {
-        check_index(index);
-        return data_[index];
-    }
-    const_reference at(size_type index) const {
-        check_index(index);
-        return data_[index];
-    }
+    reference at(size_type index);
+    
+    const_reference at(size_type index) const;
+    
+    reference front();
+    const_reference front() const;
+    reference back();
+    const_reference back() const;
+    pointer data() noexcept;
+    const_pointer data() const noexcept;
 
-    reference front() { return at(0); }
-    const_reference front() const { return at(0); }
-    reference back() { return at(size_ == 0 ? 0 : size_ - 1); }
-    const_reference back() const { return at(size_ == 0 ? 0 : size_ - 1); }
-
-    pointer data() noexcept { return data_; }
-    const_pointer data() const noexcept { return data_; }
-
-    iterator begin() noexcept { return data_; }
-    iterator end() noexcept { return data_ + size_; }
-    const_iterator begin() const noexcept { return data_; }
-    const_iterator end() const noexcept { return data_ + size_; }
-    const_iterator cbegin() const noexcept { return begin(); }
-    const_iterator cend() const noexcept { return end(); }
+    iterator begin() noexcept;
+    iterator end() noexcept;
+    const_iterator begin() const noexcept;
+    const_iterator end() const noexcept;
+    const_iterator cbegin() const noexcept;
+    const_iterator cend() const noexcept;
 
     // --- Modificadores ------------------------------------------------------
 
-    template <typename... Args>
-    reference emplace_back(Args&&... args) {
-        if (size_ == capacity_) {
-            // Constrói antes de realocar: os argumentos podem referenciar
-            // elementos do próprio array (ex.: push_back(arr[0])).
-            T temporary(std::forward<Args>(args)...);
-            reallocate(grown_capacity(size_ + 1));
-            ::new (static_cast<void*>(data_ + size_)) T(std::move(temporary));
-        } else {
-            ::new (static_cast<void*>(data_ + size_)) T(std::forward<Args>(args)...);
-        }
-        ++size_;
-        return data_[size_ - 1];
-    }
+    template <typename... Args> reference emplace_back(Args&&... args);
 
-    void push_back(const T& value) { emplace_back(value); }
-    void push_back(T&& value) { emplace_back(std::move(value)); }
+    void push_back(const T& value);
+    
+    void push_back(T&& value);
 
-    void pop_back() {
-        if (size_ == 0) throw std::out_of_range("DynamicArray::pop_back: array vazio");
-        --size_;
-        destroy_range(data_ + size_, 1);
-    }
+    void pop_back();
 
     // Insere 'value' na posição 'index' (0 <= index <= size()).
-    void insert(size_type index, const T& value) {
-        if (index > size_) {
-            throw std::out_of_range("DynamicArray::insert: indice " + std::to_string(index) +
-                                    " fora do intervalo [0, " + std::to_string(size_) + "]");
-        }
-        emplace_back(value);
-        std::rotate(data_ + index, data_ + size_ - 1, data_ + size_);
-    }
+    void insert(size_type index, const T& value);
 
-    void erase(size_type index) {
-        check_index(index);
-        std::move(data_ + index + 1, data_ + size_, data_ + index);
-        pop_back();
-    }
+    void erase(size_type index);
 
     // Anexa 'count' elementos a partir de 'source'. Aceita faixas do próprio array.
-    void append(const T* source, size_type count) {
-        if (count == 0) return;
-        if (source == nullptr) {
-            throw std::invalid_argument("DynamicArray::append: origem nula com count > 0");
-        }
-        if (count > max_size() - size_) {
-            throw std::length_error("DynamicArray::append: tamanho acima do maximo");
-        }
+    void append(const T* source, size_type count);
 
-        const std::less<const T*> before;
-        const bool inside_self = !before(source, data_) && before(source, data_ + size_);
-        const size_type offset = inside_self ? static_cast<size_type>(source - data_) : 0;
-
-        if (size_ + count > capacity_) reallocate(grown_capacity(size_ + count));
-        if (inside_self) source = data_ + offset;  // buffer pode ter mudado
-
-        for (size_type i = 0; i < count; ++i) {
-            ::new (static_cast<void*>(data_ + size_)) T(source[i]);
-            ++size_;
-        }
-    }
-
-    void append(const DynamicArray& other) { append(other.data_, other.size_); }
+    void append(const DynamicArray& other);
 
     // Destrói os elementos mas mantém a capacidade para reaproveitamento.
-    void clear() noexcept {
-        destroy_range(data_, size_);
-        size_ = 0;
-    }
+    void clear() noexcept;
 
-    void swap(DynamicArray& other) noexcept {
-        std::swap(data_, other.data_);
-        std::swap(size_, other.size_);
-        std::swap(capacity_, other.capacity_);
-    }
+    void swap(DynamicArray& other) noexcept;
+    
+    void swap(DynamicArray& a, DynamicArray& b);
 
-    friend void swap(DynamicArray& a, DynamicArray& b) noexcept { a.swap(b); }
-
-    friend bool operator==(const DynamicArray& a, const DynamicArray& b) {
-        return a.size_ == b.size_ && std::equal(a.begin(), a.end(), b.begin());
-    }
-    friend bool operator!=(const DynamicArray& a, const DynamicArray& b) { return !(a == b); }
+    bool operator==(const DynamicArray& a, const DynamicArray& b);
+    
+    bool operator!=(const DynamicArray& a, const DynamicArray& b);
 
 private:
     pointer data_ = nullptr;
     size_type size_ = 0;
     size_type capacity_ = 0;
 
-    static pointer allocate(size_type count) {
-        return count == 0 ? nullptr : std::allocator<T>().allocate(count);
-    }
+    static pointer allocate(size_type count);
 
-    static void deallocate(pointer block, size_type count) noexcept {
-        if (block != nullptr) std::allocator<T>().deallocate(block, count);
-    }
+    static void deallocate(pointer block, size_type count) noexcept;
 
-    static void destroy_range(pointer first, size_type count) noexcept {
-        if constexpr (!std::is_trivially_destructible_v<T>) {
-            for (size_type i = 0; i < count; ++i) first[i].~T();
-        }
-    }
-
-    void check_index(size_type index) const {
-        if (index >= size_) {
-            throw std::out_of_range("DynamicArray: indice " + std::to_string(index) +
-                                    " fora do intervalo (size = " + std::to_string(size_) + ")");
-        }
-    }
-
+    static void destroy_range(pointer first, size_type count) noexcept;
+    
+    void check_index(size_type index) const;
+    
     // Crescimento geométrico (x2) => push_back com custo amortizado O(1).
-    size_type grown_capacity(size_type min_required) const {
-        if (min_required > max_size()) {
-            throw std::length_error("DynamicArray: capacidade acima do maximo");
-        }
-        size_type candidate;
-        if (capacity_ == 0) {
-            candidate = kDefaultCapacity;
-        } else if (capacity_ > max_size() / kGrowthFactor) {
-            candidate = max_size();
-        } else {
-            candidate = capacity_ * kGrowthFactor;
-        }
-        return std::max(candidate, min_required);
-    }
-
+    size_type grown_capacity(size_type min_required) const;
+    
     // Move os elementos para um novo bloco; mantém o array intacto se algo lançar.
-    void reallocate(size_type new_capacity) {
-        pointer new_block = allocate(new_capacity);
-        size_type constructed = 0;
-        try {
-            for (; constructed < size_; ++constructed) {
-                ::new (static_cast<void*>(new_block + constructed))
-                    T(std::move_if_noexcept(data_[constructed]));
-            }
-        } catch (...) {
-            destroy_range(new_block, constructed);
-            deallocate(new_block, new_capacity);
-            throw;
-        }
-        destroy_range(data_, size_);
-        deallocate(data_, capacity_);
-        data_ = new_block;
-        capacity_ = new_capacity;
-    }
-
+    void reallocate(size_type new_capacity);
+    
     template <typename Construct>
-    void resize_with(size_type count, Construct construct) {
-        if (count <= size_) {
-            destroy_range(data_ + count, size_ - count);
-            size_ = count;
-            return;
-        }
-        if (count > capacity_) reallocate(grown_capacity(count));
-        while (size_ < count) {
-            construct(data_ + size_);
-            ++size_;  // incrementa a cada elemento: estado consistente se lançar
-        }
-    }
+    void resize_with(size_type count, Construct construct);
+    
 };
 
 // ============================================================================
@@ -340,39 +181,20 @@ using CharArray = DynamicArray<char>;
 
 // Funções livres em vez de herança: DynamicArray não tem destrutor virtual e
 // herdar dele convidaria a erros de uso polimórfico.
-namespace text {
+namespace Text {
 
-inline CharArray make_char_array(std::string_view content) {
-    CharArray result;
-    result.append(content.data(), content.size());
-    return result;
-}
+CharArray make_char_array(ArrayView content);
 
-inline void append_text(CharArray& target, std::string_view content) {
-    target.append(content.data(), content.size());
-}
+void append_text(CharArray& target, ArrayView content);
 
-inline std::string_view as_view(const CharArray& array) noexcept {
-    return std::string_view(array.data(), array.size());
-}
+ArrayView as_view(const CharArray& array) noexcept;
 
-inline std::string to_string(const CharArray& array) {
-    return std::string(array.data(), array.size());
-}
-
-inline CharArray substring(const CharArray& array, std::size_t position,
-                           std::size_t length = std::string_view::npos) {
-    if (position > array.size()) {
-        throw std::out_of_range("text::substring: posicao " + std::to_string(position) +
-                                " maior que o tamanho " + std::to_string(array.size()));
-    }
-    const std::size_t effective = std::min(length, array.size() - position);
-    CharArray result;
-    result.append(array.data() + position, effective);
-    return result;
-}
-
-}  // namespace text
+std::string to_string(const CharArray& array);
+ 
+CharArray substring(const CharArray& array, std::size_t position,
+                   std::size_t length = ArrayView::npos);
+                   
+}  // namespace Text
 
 // ============================================================================
 // 3. Matrix<T> — tabela 2D em ordem de linha (row-major)
@@ -383,57 +205,34 @@ class Matrix {
 public:
     Matrix() = default;
 
-    Matrix(std::size_t rows, std::size_t cols, const T& value = T()) {
-        assign(rows, cols, value);
-    }
+    Matrix(std::size_t rows, std::size_t cols, const T& value = T());
+    
 
     // Redefine dimensões e preenche todas as células com 'value'.
-    void assign(std::size_t rows, std::size_t cols, const T& value = T()) {
-        if (cols != 0 && rows > std::numeric_limits<std::size_t>::max() / cols) {
-            throw std::length_error("Matrix::assign: dimensoes excedem o limite");
-        }
-        rows_ = 0;
-        cols_ = 0;
-        cells_.clear();
-        cells_.resize(rows * cols, value);
-        rows_ = rows;
-        cols_ = cols;
-    }
+    void assign(std::size_t rows, std::size_t cols, const T& value = T());
 
-    void fill(const T& value) { std::fill(cells_.begin(), cells_.end(), value); }
-
-    std::size_t rows() const noexcept { return rows_; }
-    std::size_t cols() const noexcept { return cols_; }
-    std::size_t size() const noexcept { return cells_.size(); }
-    bool empty() const noexcept { return cells_.empty(); }
+    void fill(const T& value);
+    
+    std::size_t rows() const noexcept;
+    std::size_t cols() const noexcept;
+    std::size_t size() const noexcept;
+    bool empty() const noexcept;
 
     // Sem verificação de limites.
-    T& operator()(std::size_t row, std::size_t col) noexcept { return cells_[row * cols_ + col]; }
-    const T& operator()(std::size_t row, std::size_t col) const noexcept {
-        return cells_[row * cols_ + col];
-    }
-
-    T& at(std::size_t row, std::size_t col) {
-        check_bounds(row, col);
-        return cells_[row * cols_ + col];
-    }
-    const T& at(std::size_t row, std::size_t col) const {
-        check_bounds(row, col);
-        return cells_[row * cols_ + col];
-    }
+    T& operator()(std::size_t row, std::size_t col) noexcept;
+  
+    const T& operator()(std::size_t row, std::size_t col) const noexcept;
+    
+    T& at(std::size_t row, std::size_t col);
+    
+    const T& at(std::size_t row, std::size_t col) const;
 
 private:
     DynamicArray<T> cells_;
     std::size_t rows_ = 0;
     std::size_t cols_ = 0;
 
-    void check_bounds(std::size_t row, std::size_t col) const {
-        if (row >= rows_ || col >= cols_) {
-            throw std::out_of_range("Matrix: posicao (" + std::to_string(row) + ", " +
-                                    std::to_string(col) + ") fora de " + std::to_string(rows_) +
-                                    "x" + std::to_string(cols_));
-        }
-    }
+    void check_bounds(std::size_t row, std::size_t col) const;
 };
 
 // ============================================================================
@@ -455,7 +254,7 @@ using MatchArray = DynamicArray<Match>;
 
 // KMP: failure[i] = tamanho do maior prefixo próprio de pattern[0..i] que
 // também é sufixo (função de prefixo / LPS).
-struct KmpTable {
+struct KMPTable {
     IndexArray failure;
 };
 
@@ -471,9 +270,7 @@ struct BoyerMooreTables {
     IndexArray suffix_border;
 
     // Indexa pelo valor sem sinal: char pode ser negativo em algumas plataformas.
-    static std::size_t index_of(char symbol) noexcept {
-        return static_cast<unsigned char>(symbol);
-    }
+    static std::size_t index_of(char symbol) noexcept;
 };
 
 // Rabin-Karp: parâmetros do hash rolante e o hash de cada janela do texto.
@@ -488,47 +285,22 @@ struct RabinKarpTable {
 // Levenshtein: matriz (|a|+1) x (|b|+1) de custos.
 using LevenshteinMatrix = Matrix<std::size_t>;
 
-// Fábricas: apenas alocam e inicializam o armazenamento; o preenchimento
+// Factories: apenas alocam e inicializam o armazenamento; o preenchimento
 // com os valores do algoritmo fica a cargo de quem o implementa.
-namespace tables {
 
-inline KmpTable make_kmp_table(std::size_t pattern_length) {
-    KmpTable table;
-    table.failure.resize(pattern_length, 0);
-    return table;
-}
+namespace Tables {
 
-inline BoyerMooreTables make_boyer_moore_tables(std::size_t pattern_length) {
-    BoyerMooreTables tables;
-    tables.bad_character.resize(BoyerMooreTables::kAlphabetSize, -1);
-    tables.good_suffix_shift.resize(pattern_length + 1, 0);
-    tables.suffix_border.resize(pattern_length + 1, 0);
-    return tables;
-}
+KMPTable make_kmp_table(std::size_t pattern_length);
 
-inline RabinKarpTable make_rabin_karp_table(std::size_t text_length, std::size_t pattern_length,
-                                            std::uint64_t base = 256,
-                                            std::uint64_t modulus = 1'000'000'007ULL) {
-    if (modulus == 0) {
-        throw std::invalid_argument("make_rabin_karp_table: modulo nao pode ser zero");
-    }
-    RabinKarpTable table;
-    table.base = base;
-    table.modulus = modulus;
-    const std::size_t windows = text_length >= pattern_length ? text_length - pattern_length + 1 : 0;
-    table.window_hashes.resize(windows, 0);
-    return table;
-}
+BoyerMooreTables make_boyer_moore_tables(std::size_t pattern_length);
 
-inline LevenshteinMatrix make_levenshtein_matrix(std::size_t length_a, std::size_t length_b) {
-    constexpr std::size_t kMax = std::numeric_limits<std::size_t>::max();
-    if (length_a == kMax || length_b == kMax) {
-        throw std::length_error("make_levenshtein_matrix: tamanho excede o limite");
-    }
-    return LevenshteinMatrix(length_a + 1, length_b + 1, 0);
-}
-
-}  // namespace tables
+RabinKarpTable make_rabin_karp_table(std::size_t text_length, std::size_t pattern_length,
+                                     std::uint64_t base = 256,
+                                     std::uint64_t modulus = 1'000'000'007ULL);
+                                            
+LevenshteinMatrix make_levenshtein_matrix(std::size_t length_a, std::size_t length_b);
+ 
+}  // namespace Tables
 
 }  // namespace DynamicArray
 
