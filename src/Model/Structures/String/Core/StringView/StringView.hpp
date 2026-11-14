@@ -1,11 +1,3 @@
-#ifndef STRING_VIEW
-#define STRING_VIEW
-
-#include <cstddef>
-#include <iterator>
-
-namespace StringView {
-
 /**
  * Visão somente leitura e não proprietária sobre uma sequência contígua de
  * caracteres.
@@ -21,6 +13,16 @@ namespace StringView {
  * A sequência NÃO precisa ser terminada em '\0'. Por isso, data() não deve
  * ser usado como C-string sem que isso seja garantido pelo chamador.
  */
+
+#ifndef STRING_VIEW
+#define STRING_VIEW
+
+#include <cstddef>
+#include <iterator>
+#include <string>
+
+namespace StringView {
+    
 class StringView {
 public:
     using value_type             = char;
@@ -43,11 +45,15 @@ public:
     /// View vazia.
     constexpr StringView() noexcept = default;
 
-    /// View sobre [data, data + length). Pré-condição: se length > 0,
-    /// data não pode ser nulo.
-    constexpr StringView(const char* data, size_type length) noexcept
-        : data_(data), size_(length) {}
+    /// View sobre o conteúdo de uma std::string (não estende seu tempo de vida).
+    StringView(const std::string& str) noexcept;
+    
+    /// Primeira ocorrência de `needle` a partir de `pos`, ou npos.
+    /// Uma `needle` vazia retorna pos (se pos <= size()).
+    size_type find(StringView needle, size_type pos = 0) const noexcept;
 
+    /// Primeira ocorrência de `ch` a partir de `pos`, ou npos.
+    size_type find(char ch, size_type pos = 0) const noexcept;
     /// View sobre uma C-string terminada em '\0' (o terminador não faz
     /// parte da view). Um ponteiro nulo resulta em view vazia.
     StringView(const char* cString) noexcept;
@@ -56,49 +62,43 @@ public:
     // Capacidade
     // ------------------------------------------------------------------
 
-    constexpr size_type size() const noexcept { return size_; }
-    constexpr size_type length() const noexcept { return size_; }
-    constexpr bool empty() const noexcept { return size_ == 0; }
+    constexpr size_type size() const noexcept;
+    constexpr size_type length() const noexcept;
+    constexpr bool empty() const noexcept;
 
     // ------------------------------------------------------------------
     // Acesso a elementos
     // ------------------------------------------------------------------
 
     /// Acesso sem verificação de limites. Pré-condição: index < size().
-    constexpr const_reference operator[](size_type index) const noexcept {
-        return data_[index];
-    }
+    constexpr const_reference operator[](size_type index) const noexcept;
 
     /// Acesso com verificação de limites.
     /// @throws std::out_of_range se index >= size().
     const_reference at(size_type index) const;
 
     /// Pré-condição: !empty().
-    constexpr const_reference front() const noexcept { return data_[0]; }
+    constexpr const_reference front() const noexcept;
 
     /// Pré-condição: !empty().
-    constexpr const_reference back() const noexcept { return data_[size_ - 1]; }
+    constexpr const_reference back() const noexcept;
 
     /// Acesso direto aos dados, sem cópia. Pode ser nulo se a view for vazia.
-    constexpr const_pointer data() const noexcept { return data_; }
+    constexpr const_pointer data() const noexcept;
 
     // ------------------------------------------------------------------
     // Iteração
     // ------------------------------------------------------------------
 
-    constexpr const_iterator begin() const noexcept { return data_; }
-    constexpr const_iterator end() const noexcept { return data_ + size_; }
-    constexpr const_iterator cbegin() const noexcept { return begin(); }
-    constexpr const_iterator cend() const noexcept { return end(); }
+    constexpr const_iterator begin() const noexcept;
+    constexpr const_iterator end() const noexcept;
+    constexpr const_iterator cbegin() const noexcept;
+    constexpr const_iterator cend() const noexcept;
 
-    const_reverse_iterator rbegin() const noexcept {
-        return const_reverse_iterator(end());
-    }
-    const_reverse_iterator rend() const noexcept {
-        return const_reverse_iterator(begin());
-    }
-    const_reverse_iterator crbegin() const noexcept { return rbegin(); }
-    const_reverse_iterator crend() const noexcept { return rend(); }
+    const_reverse_iterator rbegin() const noexcept;
+    const_reverse_iterator rend() const noexcept;
+    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crend() const noexcept;
 
     // ------------------------------------------------------------------
     // Subviews

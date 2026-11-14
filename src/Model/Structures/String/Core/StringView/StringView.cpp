@@ -4,7 +4,26 @@
 #include <stdexcept>
 #include <string>  // std::char_traits
 
-namespace StringView {
+StringView::size_type StringView::find(StringView needle, size_type pos) const noexcept {
+    if (pos > size_) return npos;
+    if (needle.size_ == 0) return pos;
+    if (needle.size_ > size_ - pos) return npos;
+
+    const size_type last = size_ - needle.size_;
+    for (size_type i = pos; i <= last; ++i) {
+        if (std::char_traits<char>::compare(data_ + i, needle.data_, needle.size_) == 0) {
+            return i;
+        }
+    }
+    return npos;
+}
+
+StringView::size_type StringView::find(char ch, size_type pos) const noexcept {
+    for (size_type i = pos; i < size_; ++i) {
+        if (data_[i] == ch) return i;
+    }
+    return npos;
+}
 
 namespace {
 using Traits = std::char_traits<char>;
@@ -58,5 +77,3 @@ bool operator<(StringView lhs, StringView rhs) noexcept { return lhs.compare(rhs
 bool operator<=(StringView lhs, StringView rhs) noexcept { return lhs.compare(rhs) <= 0; }
 bool operator>(StringView lhs, StringView rhs) noexcept { return lhs.compare(rhs) > 0; }
 bool operator>=(StringView lhs, StringView rhs) noexcept { return lhs.compare(rhs) >= 0; }
-
-}  // namespace StringView

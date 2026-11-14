@@ -1,25 +1,32 @@
+#ifndef NORMALIZER
+#define NORMALIZER
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
-#include <string>
-#include <string_view>
 #include <unordered_map>
 #include <utility>
 
-namespace Normalizer {
+#include "src/Model/Structures/String/Core/StringBuffer/StringBuffer.hpp"
+#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
 
+using NormalizerView = StringView::StringView;
+using NormalizerBuffer = StringBuffer::StringBuffer;
+
+namespace Normalizer {
+   
 enum class UnicodeForm { NFC, NFD };
 
 class Normalizer {
 public:
     explicit Normalizer(UnicodeForm form = UnicodeForm::NFC);
 
-    std::string normalize(std::string_view utf8Text) const;
-    std::string normalizeUnicode(std::string_view utf8Text) const;
-    std::string caseFold(std::string_view utf8Text) const;
-    std::string removeDiacritics(std::string_view utf8Text) const;
-    bool equivalent(std::string_view lhs, std::string_view rhs) const;
+    NormalizerBuffer normalize(NormalizerView utf8Text) const;
+    NormalizerBuffer normalizeUnicode(NormalizerView utf8Text) const;
+    NormalizerBuffer caseFold(NormalizerView utf8Text) const;
+    NormalizerBuffer removeDiacritics(NormalizerView utf8Text) const;
+    bool equivalent(NormalizerView lhs, NormalizerView rhs) const;
 
 private:
     UnicodeForm form_;
@@ -134,9 +141,9 @@ const Decomposition kDecompositions[] = {
 
 bool inRange(char32_t c, char32_t low, char32_t high);
 
-std::u32string decodeUtf8(std::string_view input);
+std::u32string decodeUtf8(NormalizerView input);
 
-std::string encodeUtf8(const std::u32string& input);
+NormalizerBuffer encodeUtf8(const std::u32string& input);
 
 const std::unordered_map<char32_t, std::pair<char32_t, char32_t>>& decompositionMap();
 
@@ -163,3 +170,5 @@ std::u32string applyDiacriticRemoval(const std::u32string& input);
 }  // namespace Details
 
 }  // namespace Normalizer
+
+#endif // NORMALIZER

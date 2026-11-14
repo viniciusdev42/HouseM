@@ -1,17 +1,23 @@
 #include "Normalizer.hpp"
 
+using NV = NormalizerView;
+using NB = NormalizerBuffer;
+
 bool inRange(char32_t c, char32_t low, char32_t high) {
     return c >= low && c <= high;
 }
 
-std::u32string decodeUtf8(std::string_view input) {
+std::u32string decodeUtf8(NV input) {
     static const char32_t kMinByLength[] = {0, 0, 0x80, 0x800, 0x10000};
+    const char* bytes = input.data();
+    const std::size_t inputSize = input.size();
+
     std::u32string output;
-    output.reserve(input.size());
+    output.reserve(inputSize);
 
     std::size_t i = 0;
-    while (i < input.size()) {
-        const auto lead = static_cast<unsigned char>(input[i]);
+    while (i < inputSize) {
+        const auto lead = static_cast<unsigned char>(bytes[i]);
         char32_t codePoint = 0;
         std::size_t length = 0;
 
@@ -31,12 +37,12 @@ std::u32string decodeUtf8(std::string_view input) {
             throw std::invalid_argument("UTF-8 invalido na posicao " + std::to_string(i));
         }
 
-        if (i + length > input.size()) {
+        if (i + length > inputSize) {
             throw std::invalid_argument("UTF-8 truncado na posicao " + std::to_string(i));
         }
 
         for (std::size_t k = 1; k < length; ++k) {
-            const auto next = static_cast<unsigned char>(input[i + k]);
+            const auto next = static_cast<unsigned char>(bytes[i + k]);
             if ((next & 0xC0u) != 0x80u) {
                 throw std::invalid_argument("UTF-8 invalido na posicao " + std::to_string(i + k));
             }
@@ -54,25 +60,25 @@ std::u32string decodeUtf8(std::string_view input) {
     return output;
 }
 
-std::string encodeUtf8(const std::u32string& input) {
-    std::string output;
+NB encodeUtf8(const std::u32string& input) {
+    NB output;
     output.reserve(input.size());
 
     for (const char32_t cp : input) {
         if (cp < 0x80) {
-            output.push_back(static_cast<char>(cp));
+            output.pushBack(static_cast<char>(cp));
         } else if (cp < 0x800) {
-            output.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-            output.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            output.pushBack(static_cast<char>(0xC0 | (cp >> 6)));
+            output.pushBack(static_cast<char>(0x80 | (cp & 0x3F)));
         } else if (cp < 0x10000) {
-            output.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-            output.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            output.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            output.pushBack(static_cast<char>(0xE0 | (cp >> 12)));
+            output.pushBack(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            output.pushBack(static_cast<char>(0x80 | (cp & 0x3F)));
         } else {
-            output.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-            output.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-            output.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            output.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            output.pushBack(static_cast<char>(0xF0 | (cp >> 18)));
+            output.pushBack(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+            output.pushBack(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            output.pushBack(static_cast<char>(0x80 | (cp & 0x3F)));
         }
     }
     return output;
@@ -245,19 +251,19 @@ std::u32string applyDiacriticRemoval(const std::u32string& input) {
 
 Normalizer::Normalizer(UnicodeForm form) : form_(form) {}
 
-std::string Normalizer::normalizeUnicode(std::string_view utf8Text) const {
+NB Normalizer::normalizeUnicode(NV utf8Text) const {
     return encodeUtf8(applyUnicodeForm(decodeUtf8(utf8Text), form_));
 }
 
-std::string Normalizer::caseFold(std::string_view utf8Text) const {
+NB Normalizer::caseFold(NV utf8Text) const {
     return encodeUtf8(applyCaseFolding(decodeUtf8(utf8Text)));
 }
 
-std::string Normalizer::removeDiacritics(std::string_view utf8Text) const {
+NB Normalizer::removeDiacritics(NV utf8Text) const {
     return encodeUtf8(applyDiacriticRemoval(decodeUtf8(utf8Text)));
 }
 
-std::string Normalizer::normalize(std::string_view utf8Text) const {
+NB Normalizer::normalize(NV utf8Text) const {
     std::u32string text = decodeUtf8(utf8Text);
     text = applyUnicodeForm(text, form_);
     text = applyCaseFolding(text);
@@ -266,6 +272,8 @@ std::string Normalizer::normalize(std::string_view utf8Text) const {
     return encodeUtf8(text);
 }
 
-bool Normalizer::equivalent(std::string_view lhs, std::string_view rhs) const {
-    return normalize(lhs) == normalize(rhs);
+bool Normalizer::equivalent(NV lhs, NV rhs) const {
+    const NB left = normalize(lhs);
+    const NB right = normalize(rhs);
+    return left.view() == right.view();
 }

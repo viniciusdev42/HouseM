@@ -1,5 +1,7 @@
 #include "Tokenizer.hpp"
 
+using TV =TokenizerView;
+
 /* --------- Funções auxiliares ------------ */
 
 namespace {
@@ -12,10 +14,11 @@ struct DecodedCodePoint {
 /* Decodifica um code point UTF-8 em `pos`. Sequência inválida (truncada,
    overlong, surrogate ou > U+10FFFF) consome 1 byte e retorna U+FFFD, o que
    garante progresso e permite copiar os bytes originais para o token.*/
-DecodedCodePoint decodeUtf8At(std::string_view s, std::size_t pos) {
+DecodedCodePoint decodeUtf8At(TV s, std::size_t pos) {
     const DecodedCodePoint invalid{0xFFFD, 1};
+    const char* bytes = s.data();
 
-    const unsigned char lead = static_cast<unsigned char>(s[pos]);
+    const unsigned char lead = static_cast<unsigned char>(bytes[pos]);
     if (lead < 0x80) return {lead, 1};
 
     std::size_t length = 0;
@@ -30,7 +33,7 @@ DecodedCodePoint decodeUtf8At(std::string_view s, std::size_t pos) {
     if (pos + length > s.size()) return invalid;
 
     for (std::size_t i = 1; i < length; ++i) {
-        const unsigned char byte = static_cast<unsigned char>(s[pos + i]);
+        const unsigned char byte = static_cast<unsigned char>(bytes[pos + i]);
         if ((byte & 0xC0) != 0x80) return invalid;
         value = (value << 6) | (byte & 0x3F);
     }
@@ -73,9 +76,9 @@ bool isConnector(char32_t cp) {
 
 Tokenizer::Tokenizer(TokenizerOptions options) : options_(std::move(options)) {}
 
-std::vector<std::string> Tokenizer::tokenize(std::string_view text) const {
+std::vector<std::string> Tokenizer::tokenize(TV text) const {
     std::vector<std::string> tokens;
-    if (text.empty()) return tokens;
+    if (text.size() == 0) return tokens;
 
     std::string current;
     /* "Aberto" = existe um token em construção (mesmo que ainda vazio). Fecha
@@ -87,7 +90,7 @@ std::vector<std::string> Tokenizer::tokenize(std::string_view text) const {
     std::size_t pos = 0;
     while (pos < text.size()) {
         const DecodedCodePoint decoded = decodeUtf8At(text, pos);
-        const std::string_view raw = text.substr(pos, decoded.length);
+        const TV raw = text.substr(pos, decoded.length);
         const std::size_t nextPos = pos + decoded.length;
 
         switch (classify(decoded.value)) {
@@ -99,21 +102,21 @@ std::vector<std::string> Tokenizer::tokenize(std::string_view text) const {
                 break;
 
             case CharClass::Word:
-                current.append(raw);
+                current.append(raw.data(), raw.size());
                 tokenOpen = true;
                 lastWasWordChar = true;
                 break;
 
             case CharClass::Punctuation:
                 if (shouldStayInsideToken(decoded.value, lastWasWordChar, text, nextPos)) {
-                    current.append(raw);
+                    current.append(raw.data(), raw.size());
                     tokenOpen = true;
                     lastWasWordChar = false;
                     break;
                 }
                 if (!current.empty()) flush(tokens, current);
                 if (options_.punctuation == PunctuationMode::Separate) {
-                    tokens.emplace_back(raw);
+                    tokens.emplace_back(raw.data(), raw.size());
                 }
                 tokenOpen = false;
                 lastWasWordChar = false;
@@ -136,7 +139,7 @@ std::vector<std::string> Tokenizer::tokenize(std::string_view text) const {
 /* Em modo Keep a pontuação sempre fica no token. Nos demais modos, só
    hífen/apóstrofo cercados por letras ou dígitos permanecem no token.*/
 bool Tokenizer::shouldStayInsideToken(char32_t codePoint, bool lastWasWordChar,
-                                      std::string_view text, std::size_t nextPos) const {
+                                      TV text, std::size_t nextPos) const {
     if (options_.punctuation == PunctuationMode::Keep) return true;
     if (!options_.keepIntraWordConnectors) return false;
     if (!lastWasWordChar || !isConnector(codePoint)) return false;

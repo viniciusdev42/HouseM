@@ -19,9 +19,14 @@
 
 #include <cstddef>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
+
+#include "StringView.hpp"
+
+using TokenizerView = StringView::StringView;
+
+namespace Tokenizer {
 
 namespace Text {
 
@@ -55,7 +60,7 @@ public:
 
     /* Devolve os tokens na ordem original. Nunca lança exceção: bytes UTF-8
        inválidos são tratados como símbolos e preservados byte a byte.*/
-    std::vector<std::string> tokenize(std::string_view text) const;
+    std::vector<std::string> tokenize(TokenizerView text) const;
 
 private:
     enum class CharClass { Delimiter, Whitespace, Word, Punctuation };
@@ -63,10 +68,13 @@ private:
     CharClass classify(char32_t codePoint) const;
     
     bool shouldStayInsideToken(char32_t codePoint, bool lastWasWordChar,
-                               std::string_view text, std::size_t nextPos) const;
+                               TokenizerView text, std::size_t nextPos) const;
                                
     void flush(std::vector<std::string>& tokens, std::string& current) const;
 
     TokenizerOptions options_;                                 
 };
+
+} // namespace Tokenizer
+
 #endif

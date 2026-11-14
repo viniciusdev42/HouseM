@@ -5,13 +5,15 @@
 #include <functional>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
-namespace {
+using BV = BV;
 
 // Limite conservador para evitar overflow em contas de capacidade + 1 e
 // em somas de tamanhos.
 constexpr std::size_t kMaxSize = std::numeric_limits<std::size_t>::max() / 2 - 1;
+constexpr std::size_t kNpos = std::numeric_limits<std::size_t>::max();
 
 void ensureWithinMaxSize(std::size_t requested, const char* operation) {
     if (requested > kMaxSize) {
@@ -20,7 +22,29 @@ void ensureWithinMaxSize(std::size_t requested, const char* operation) {
     }
 }
 
-}  // namespace
+// Cópia estável de uma StringBuffer::View, independente do buffer de origem.
+std::string toStdString(BV text) {
+    return text.empty() ? std::string() : std::string(text.data(), text.size());
+}
+
+BV toView(const std::string& text) {
+    return BV(text.data(), text.size());
+}
+
+// Busca `needle` em `haystack` a partir de `from`, usando substr() e
+// operator== de StringView. Retorna kNpos se não encontrar.
+std::size_t findFrom(BV haystack, BV needle, std::size_t from) {
+    if (needle.size() > haystack.size()) {
+        return kNpos;
+    }
+    const std::size_t lastStart = haystack.size() - needle.size();
+    for (std::size_t i = from; i <= lastStart; ++i) {
+        if (haystack.substr(i, needle.size()) == needle) {
+            return i;
+        }
+    }
+    return kNpos;
+}
 
 // ---------------------------------------------------------------------------
 // Construção, cópia, movimentação
@@ -36,8 +60,8 @@ StringBuffer::StringBuffer(std::size_t initialCapacity) {
     terminate();
 }
 
-StringBuffer::StringBuffer(std::string_view initialContent)
-    : StringBuffer(std::max(initialContent.size(), kDefaultCapacity)) {
+StringBuffer::StringBuffer(StringView::StringView initialContent)
+    : StringBuffer(std::max(static_cast<std::size_t>(initialContent.size()), kDefaultCapacity)) {
     append(initialContent);
 }
 
@@ -105,7 +129,7 @@ StringBuffer& StringBuffer::insert(std::size_t pos, std::size_t count, char ch) 
     return *this;
 }
 
-StringBuffer& StringBuffer::insert(std::size_t pos, std::string_view text) {
+StringBuffer& StringBuffer::insert(std::size_t pos, StringView::StringView text) {
     checkPosition(pos, "insert");
     if (text.empty()) {
         return *this;
@@ -113,15 +137,15 @@ StringBuffer& StringBuffer::insert(std::size_t pos, std::string_view text) {
     // Se `text` aponta para dentro do próprio buffer, uma realocação ou o
     // deslocamento da cauda invalidaria a origem; copiamos antes.
     if (overlapsBuffer(text)) {
-        const std::string stableCopy(text);
-        return insert(pos, std::string_view(stableCopy));
+        const std::string stableCopy = toStdString(text);
+        return insert(pos, toView(stableCopy));
     }
     splice(pos, 0, text.size());
     std::memcpy(data_.get() + pos, text.data(), text.size());
     return *this;
 }
 
-StringBuffer& StringBuffer::append(std::string_view text) {
+StringBuffer& StringBuffer::append(StringView::StringView text) {
     return insert(size_, text);
 }
 
@@ -153,15 +177,16 @@ void StringBuffer::clear() noexcept {
 // Substituição
 // ---------------------------------------------------------------------------
 
-StringBuffer& StringBuffer::replace(std::size_t pos, std::size_t count, std::string_view text) {
+StringBuffer& StringBuffer::replace(std::size_t pos, std::size_t count,
+                                    StringView::StringView text) {
     checkPosition(pos, "replace");
     const std::size_t effectiveCount = std::min(count, size_ - pos);
     if (effectiveCount == 0 && text.empty()) {
         return *this;
     }
     if (overlapsBuffer(text)) {
-        const std::string stableCopy(text);
-        return replace(pos, count, std::string_view(stableCopy));
+        const std::string stableCopy = toStdString(text);
+        return replace(pos, count, toView(stableCopy));
     }
     splice(pos, effectiveCount, text.size());
     if (!text.empty()) {
@@ -170,25 +195,29 @@ StringBuffer& StringBuffer::replace(std::size_t pos, std::size_t count, std::str
     return *this;
 }
 
-std::size_t StringBuffer::replaceAll(std::string_view target, std::string_view replacement) {
+std::size_t StringBuffer::replaceAll(StringView::StringView target,
+                                     StringView::StringView replacement) {
     if (target.empty()) {
         throw std::invalid_argument("StringBuffer::replaceAll: o trecho a localizar nao pode ser vazio");
     }
     // Cópias estáveis: replace() pode realocar o buffer e invalidar views
     // que apontem para dentro dele.
-    const std::string stableTarget(target);
-    const std::string stableReplacement(replacement);
+    const std::string stableTarget = toStdString(target);
+    const std::string stableReplacement = toStdString(replacement);
+    const BV targetView = toView(stableTarget);
+    const BV replacementView = toView(stableReplacement);
 
     std::size_t replacements = 0;
     std::size_t searchFrom = 0;
     while (true) {
-        const std::size_t index = view().find(stableTarget, searchFrom);
-        if (index == std::string_view::npos) {
+        // StringBuffer::View() é reconstruída a cada iteração, pois o buffer pode ter sido realocado.
+        const std::size_t index = findFrom(BV(), targetView, searchFrom);
+        if (index == kNpos) {
             break;
         }
-        replace(index, stableTarget.size(), stableReplacement);
+        replace(index, targetView.size(), replacementView);
         // Avança além do trecho inserido para não reprocessá-lo.
-        searchFrom = index + stableReplacement.size();
+        searchFrom = index + replacementView.size();
         ++replacements;
     }
     return replacements;
@@ -258,7 +287,7 @@ void StringBuffer::checkPosition(std::size_t pos, const char* operation) const {
     }
 }
 
-bool StringBuffer::overlapsBuffer(std::string_view text) const noexcept {
+bool StringBuffer::overlapsBuffer(StringView::StringView text) const noexcept {
     if (!data_ || text.empty()) {
         return false;
     }

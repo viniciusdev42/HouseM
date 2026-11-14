@@ -1,11 +1,3 @@
-#ifndef STRING_BUFFER
-#define STRING_BUFFER
-
-#include <cstddef>
-#include <memory>
-#include <string>
-#include <string_view>
-
 /**
  * StringBuffer: buffer de caracteres mutável com capacidade gerenciada.
  *
@@ -20,6 +12,20 @@
  * std::length_error, std::invalid_argument, std::bad_alloc) não alteram o
  * conteúdo do buffer.
  */
+ 
+#ifndef STRING_BUFFER
+#define STRING_BUFFER
+
+#include <cstddef>
+#include <memory>
+#include <string>
+
+#include "StringView.hpp"
+
+using BufferView = StringView::StringView;
+
+namespace StringBuffer {
+    
 class StringBuffer {
 public:
     static constexpr std::size_t kDefaultCapacity = 16;
@@ -28,7 +34,7 @@ public:
     // --- Construção, cópia, movimentação e destruição ---------------------
     StringBuffer();
     explicit StringBuffer(std::size_t initialCapacity);
-    StringBuffer(std::string_view initialContent);
+    StringBuffer(BufferView initialContent);
     StringBuffer(const StringBuffer& other);
     StringBuffer(StringBuffer&& other) noexcept;
     StringBuffer& operator=(const StringBuffer& other);
@@ -40,9 +46,9 @@ public:
     // --- Inserção ---------------------------------------------------------
     StringBuffer& insert(std::size_t pos, char ch);
     StringBuffer& insert(std::size_t pos, std::size_t count, char ch);
-    StringBuffer& insert(std::size_t pos, std::string_view text);
+    StringBuffer& insert(std::size_t pos, BufferView text);
 
-    StringBuffer& append(std::string_view text);
+    StringBuffer& append(BufferView text);
     StringBuffer& append(std::size_t count, char ch);
     void pushBack(char ch);
 
@@ -56,11 +62,11 @@ public:
 
     // --- Substituição -----------------------------------------------------
     /// Substitui até `count` caracteres a partir de `pos` por `text`.
-    StringBuffer& replace(std::size_t pos, std::size_t count, std::string_view text);
+    StringBuffer& replace(std::size_t pos, std::size_t count, BufferView text);
 
     /// Substitui todas as ocorrências não sobrepostas de `target` por
     /// `replacement`. Retorna o número de substituições feitas.
-    std::size_t replaceAll(std::string_view target, std::string_view replacement);
+    std::size_t replaceAll(BufferView target, BufferView replacement);
 
     // --- Capacidade e tamanho --------------------------------------------
     /// Garante capacidade mínima de `newCapacity`. Nunca diminui a capacidade.
@@ -74,25 +80,25 @@ public:
     void shrinkToFit();
 
     // --- Acesso e consulta -----------------------------------------------
-    std::size_t size() const noexcept { return size_; }
-    std::size_t capacity() const noexcept { return capacity_; }
-    bool empty() const noexcept { return size_ == 0; }
+    std::size_t size() const noexcept;
+    std::size_t capacity() const noexcept;
+    bool empty() const noexcept;
 
-    char& operator[](std::size_t index) noexcept { return data_[index]; }
-    char operator[](std::size_t index) const noexcept { return data()[index]; }
+    char& operator[](std::size_t index) noexcept;
+    char operator[](std::size_t index) const noexcept;
     char& at(std::size_t index);
     char at(std::size_t index) const;
 
-    const char* c_str() const noexcept { return data(); }
-    std::string_view view() const noexcept { return std::string_view(data(), size_); }
-    std::string str() const { return std::string(data(), size_); }
+    const char* c_str() const noexcept;
+    BufferView view() const noexcept;
+    std::string str() const;
 
 private:
     /// Retorna string vazia válida mesmo para objetos "moved-from".
-    const char* data() const noexcept { return data_ ? data_.get() : ""; }
+    const char* rawData_() const noexcept;
 
     void checkPosition(std::size_t pos, const char* operation) const;
-    bool overlapsBuffer(std::string_view text) const noexcept;
+    bool overlapsBuffer(BufferView text) const noexcept;
     void ensureCapacity(std::size_t required);
     void reallocate(std::size_t newCapacity);
     void terminate() noexcept;
@@ -106,5 +112,7 @@ private:
     std::size_t size_ = 0;
     std::size_t capacity_ = 0;
 };
+
+} // namespace StringBuffer
 
 #endif // STRING_BUFFER
