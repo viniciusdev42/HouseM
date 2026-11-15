@@ -1,5 +1,5 @@
-#ifndef PAGE_BUFFER
-#define PAGE_BUFFER
+#ifndef PAGE_BUFFER_HPP
+#define PAGE_BUFFER_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -102,4 +102,4 @@ private:
     std::list<std::size_t>                         lruList_;   // frames não pinados; frente = menos recente
 };
 
-#endif // PAGE_BUFFER
+#endif // PAGE_BUFFER_HPP

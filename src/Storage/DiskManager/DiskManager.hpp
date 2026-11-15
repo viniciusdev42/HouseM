@@ -1,5 +1,5 @@
-#ifndef  DISK_MANAGER
-#define  DISK_MANAGER
+#ifndef  DISK_MANAGER_HPP
+#define  DISK_MANAGER_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -53,4 +53,4 @@ private:
     std::fstream file_;
 };
 
-#endif //  DISK_MANAGER
+#endif //  DISK_MANAGER_HPP

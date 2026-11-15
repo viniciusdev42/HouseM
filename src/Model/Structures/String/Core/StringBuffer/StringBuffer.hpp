@@ -13,8 +13,8 @@
  * conteúdo do buffer.
  */
  
-#ifndef STRING_BUFFER
-#define STRING_BUFFER
+#ifndef STRING_BUFFER_HPP
+#define STRING_BUFFER_HPP
 
 #include <cstddef>
 #include <memory>
@@ -115,4 +115,4 @@ private:
 
 } // namespace StringBuffer
 
-#endif // STRING_BUFFER
+#endif // STRING_BUFFER_HPP

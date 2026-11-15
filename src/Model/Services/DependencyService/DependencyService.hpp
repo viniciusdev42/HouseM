@@ -1,5 +1,5 @@
-#ifndef DEPENDENCY_SERVICE
-#define DEPENDENCY_SERVICE
+#ifndef DEPENDENCY_SERVICE_HPP
+#define DEPENDENCY_SERVICE_HPP
 
 #include <cstddef>
 #include <map>
@@ -143,4 +143,4 @@ private:
 
 }  // namespace Dependency
 
-#endif  // DEPENDENCY_SERVICE
+#endif  // DEPENDENCY_SERVICE_HPP

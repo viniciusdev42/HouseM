@@ -1,5 +1,5 @@
-#ifndef HASH_TABLE
-#define HASH_TABLE
+#ifndef HASH_TABLE_HPP
+#define HASH_TABLE_HPP
 
 #include <cstddef>
 #include <optional>
@@ -92,4 +92,4 @@ private:
     double maxLoadFactor_;
 };
 
-#endif // HASH_TABLE
+#endif // HASH_TABLE_HPP

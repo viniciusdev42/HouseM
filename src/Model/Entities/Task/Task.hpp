@@ -1,5 +1,5 @@
-#ifndef TASK
-#define TASK
+#ifndef TASK_HPP
+#define TASK_HPP
 
 #include <array>
 #include <cctype>
@@ -167,4 +167,4 @@ private:
 };
 
 }  // namespace Task
-#endif // TASK
+#endif // TASK_HPP

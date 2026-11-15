@@ -1,5 +1,5 @@
-#ifndef GRAPH
-#define GRAPH
+#ifndef GRAPH_HPP
+#define GRAPH_HPP
 
 #include <cstddef>
 #include <iostream>
@@ -89,4 +89,4 @@ private:
     bool hasCycleUndirected() const;
 };
 
-#endif // GRAPH
+#endif // GRAPH_HPP

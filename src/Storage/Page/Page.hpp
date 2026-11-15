@@ -1,5 +1,5 @@
-#ifndef PAGE
-#define PAGE
+#ifndef PAGE_HPP
+#define PAGE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -111,4 +111,4 @@ private:
     PageHeader header_;
 };
 
-#endif // PAGE
+#endif // PAGE_HPP

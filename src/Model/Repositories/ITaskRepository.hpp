@@ -1,5 +1,5 @@
-#ifndef TASK_REPOSITORY
-#define TASK_REPOSITORY
+#ifndef TASK_REPOSITORY_HPP
+#define TASK_REPOSITORY_HPP
 
 #include <array>
 #include <cstddef>
@@ -306,4 +306,4 @@ private:
 };
 
 }  // namespace ITaskRepository
-#endif  // TASK_REPOSITORY
+#endif  // TASK_REPOSITORY_HPP

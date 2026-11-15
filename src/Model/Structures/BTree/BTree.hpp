@@ -1,5 +1,5 @@
-#ifndef BTREE
-#define BTREE
+#ifndef BTREE_HPP
+#define BTREE_HPP
 
 #include <cstddef>
 #include <functional>
@@ -136,4 +136,4 @@ private:
     std::size_t size_ = 0;
 };
 
-#endif // BTREE
+#endif // BTREE_HPP

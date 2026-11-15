@@ -1,5 +1,5 @@
-#ifndef TRIE
-#define TRIE
+#ifndef TRIE_HPP
+#define TRIE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -152,4 +152,4 @@ private:
     std::unordered_map<TaskId, std::vector<std::string>> reverseIndex_;
 };
 
-#endif // TRIE 
+#endif // TRIE_HPP 

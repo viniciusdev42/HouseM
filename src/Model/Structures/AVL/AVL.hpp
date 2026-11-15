@@ -1,5 +1,5 @@
-#ifndef AVL
-#define AVL
+#ifndef AVL_HPP
+#define AVL_HPP
 
 #include <cstddef>
 #include <functional>
@@ -115,4 +115,4 @@ private:
     std::size_t count_ = 0;
 };
 
-#endif  // AVL
+#endif  // AVL_HPP

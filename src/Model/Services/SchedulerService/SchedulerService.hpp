@@ -1,5 +1,5 @@
-#ifndef SCHEDULER_SERVICE
-#define SCHEDULER_SERVICE
+#ifndef SCHEDULER_SERVICE_HPP
+#define SCHEDULER_SERVICE_HPP
 
 #include <chrono>
 #include <map>
@@ -123,4 +123,4 @@ private:
 
 }  // namespace SchedulerService
 
-#endif // SCHEDULER_SERVICE
+#endif // SCHEDULER_SERVICE_HPP

@@ -1,5 +1,5 @@
-#ifndef BTREE_NODE
-#define BTREE_NODE
+#ifndef BTREE_NODE_HPP
+#define BTREE_NODE_HPP
 
 #include <cstddef>
 #include <optional>
@@ -130,4 +130,4 @@ private:
     std::vector<BTreeNode*> children_;
 };
 
-#endif // BTREE_NODE
+#endif // BTREE_NODE_HPP

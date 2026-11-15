@@ -1,5 +1,5 @@
-#ifndef DEPENDENCY
-#define DEPENDENCY
+#ifndef DEPENDENCY_HPP
+#define DEPENDENCY_HPP
 
 #include <cstddef>
 #include <functional>
@@ -103,4 +103,4 @@ struct hash<Dependency::Dependency> {
 
 }  // namespace std
 
-#endif  // DEPENDENCY
+#endif  // DEPENDENCY_HPP

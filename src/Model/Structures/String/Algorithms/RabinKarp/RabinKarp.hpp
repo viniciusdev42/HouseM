@@ -1,5 +1,5 @@
-#ifndef RABIN_KARP
-#define RABIN_KARP
+#ifndef RABIN_KARP_HPP
+#define RABIN_KARP_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -31,4 +31,4 @@ std::optional<std::size_t> find_first(KarpView text, KarpView pattern);
 
 }  // namespace RabinKarp
 
-#endif  // RABIN_KARP
+#endif  // RABIN_KARP_HPP

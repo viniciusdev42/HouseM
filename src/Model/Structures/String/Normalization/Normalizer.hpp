@@ -1,5 +1,5 @@
-#ifndef NORMALIZER
-#define NORMALIZER
+#ifndef NORMALIZER_HPP
+#define NORMALIZER_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -171,4 +171,4 @@ std::u32string applyDiacriticRemoval(const std::u32string& input);
 
 }  // namespace Normalizer
 
-#endif // NORMALIZER
+#endif // NORMALIZER_HPP

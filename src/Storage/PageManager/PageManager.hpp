@@ -1,5 +1,5 @@
-#ifndef PAGE_MANAGER
-#define PAGE_MANAGER
+#ifndef PAGE_MANAGER_HPP
+#define PAGE_MANAGER_HPP
 
 #include <cstdint>
 #include <memory>
@@ -47,4 +47,4 @@ private:
     std::vector<std::uint32_t> freePageIds_;
 };
 
-#endif // PAGE_MANAGER
+#endif // PAGE_MANAGER_HPP

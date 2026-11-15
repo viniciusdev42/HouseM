@@ -1,5 +1,5 @@
-#ifndef BOYER_MOORE
-#define BOYER_MOORE
+#ifndef BOYER_MOORE_HPP
+#define BOYER_MOORE_HPP
 
 #include <algorithm>
 #include <array>
@@ -91,4 +91,4 @@ private:
 
 }  // namespace BoyerMoore
 
-#endif  // BOYER_MOORE
+#endif  // BOYER_MOORE_HPP

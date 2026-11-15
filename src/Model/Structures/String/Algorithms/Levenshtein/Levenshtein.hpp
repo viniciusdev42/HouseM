@@ -1,5 +1,5 @@
-#ifndef LEVENSHTEIN
-#define LEVENSHTEIN
+#ifndef LEVENSHTEIN_HPP
+#define LEVENSHTEIN_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -20,4 +20,4 @@ double levenshtein_similarity(LevenView a, LevenView b);
 
 }  // namespace Levenshtein
 
-#endif  // LEVENSHTEIN
+#endif  // LEVENSHTEIN_HPP

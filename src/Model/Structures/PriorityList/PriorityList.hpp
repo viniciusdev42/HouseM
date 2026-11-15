@@ -1,5 +1,5 @@
-#ifndef PRIORITY_LIST
-#define PRIORITY_LIST
+#ifndef PRIORITY_LIST_HPP
+#define PRIORITY_LIST_HPP
 
 #include <cstddef>
 #include <string>
@@ -78,4 +78,4 @@ private:
     Element removeAt(std::size_t index);
 };
 
-#endif // PRIORITY_LIST
+#endif // PRIORITY_LIST_HPP

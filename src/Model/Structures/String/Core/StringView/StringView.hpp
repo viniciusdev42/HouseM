@@ -14,8 +14,8 @@
  * ser usado como C-string sem que isso seja garantido pelo chamador.
  */
 
-#ifndef STRING_VIEW
-#define STRING_VIEW
+#ifndef STRING_VIEW_HPP
+#define STRING_VIEW_HPP
 
 #include <cstddef>
 #include <iterator>
@@ -131,4 +131,4 @@ bool operator>=(StringView lhs, StringView rhs) noexcept;
 
 }  // namespace StringView
 
-#endif  // STRING_VIEW
+#endif  // STRING_VIEW_HPP

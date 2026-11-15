@@ -1,5 +1,5 @@
-#ifndef TASK_SERVICE
-#define TASK_SERVICE
+#ifndef TASK_SERVICE_HPP
+#define TASK_SERVICE_HPP
 
 #include <functional>
 #include <memory>
@@ -73,4 +73,4 @@ private:
 
 }  // namespace TaskService
 
-#endif // TASK_SERVICE
+#endif // TASK_SERVICE_HPP

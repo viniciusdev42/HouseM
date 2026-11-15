@@ -14,8 +14,8 @@
 **     auto tokens = tokenizer.tokenize("Olá, mundo! Guarda-chuva.");
 ****** {"Olá", ",", "mundo", "!", "Guarda-chuva", "."}
 */
-#ifndef TOKENIZER
-#define TOKENIZER
+#ifndef TOKENIZER_HPP
+#define TOKENIZER_HPP
 
 #include <cstddef>
 #include <string>
@@ -77,4 +77,4 @@ private:
 
 } // namespace Tokenizer
 
-#endif
+#endif // TOKENIZER_HPP

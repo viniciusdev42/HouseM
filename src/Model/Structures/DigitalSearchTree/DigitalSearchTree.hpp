@@ -1,5 +1,5 @@
-#ifndef DIGITAL_SEARCH_TREE
-#define DIGITAL_SEARCH_TREE
+#ifndef DIGITAL_SEARCH_TREE_HPP
+#define DIGITAL_SEARCH_TREE_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -213,4 +213,4 @@ private:
 
 }  // namespace DigitalSearchTree
 
-#endif  // DIGITAL_SEARCH_TREE
+#endif  // DIGITAL_SEARCH_TREE_HPP

@@ -1,5 +1,5 @@
-#ifndef PROJECT
-#define PROJECT
+#ifndef PROJECT_HPP
+#define PROJECT_HPP
 
 #include <chrono>
 #include <cstddef>
@@ -139,4 +139,4 @@ private:
 
 }  // namespace Project
 
-#endif // PROJECT
+#endif // PROJECT_HPP

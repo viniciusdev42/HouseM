@@ -1,5 +1,5 @@
-#ifndef SEARCH_SERVICE
-#define SEARCH_SERVICE
+#ifndef SEARCH_SERVICE_HPP
+#define SEARCH_SERVICE_HPP
 
 #include <cstddef>
 #include <optional>
@@ -67,4 +67,4 @@ private:
 };
 
 }  // namespace SearchService
-#endif // SEARCH_SERVICE
+#endif // SEARCH_SERVICE_HPP

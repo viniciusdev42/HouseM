@@ -13,8 +13,8 @@
  * vetor LCP calculado pelo algoritmo de Kasai em O(n).
  */
 
-#ifndef SUFFIX_ARRAY
-#define SUFIX_ARRAY
+#ifndef SUFIX_ARRAY_HPP
+#define SUFIX_ARRAY_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -69,4 +69,4 @@ private:
     void buildLcp();
     
 };    
-#endif // SUFFIX_ARRAY
+#endif // SUFIX_ARRAY_HPP

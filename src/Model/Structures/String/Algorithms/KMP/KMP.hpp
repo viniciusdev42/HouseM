@@ -1,5 +1,5 @@
-#ifndef KMP
-#define KMP
+#ifndef KMP_HPP
+#define KMP_HPP
 
 #include <cstddef> 
 #include <cstdint>
@@ -18,4 +18,4 @@ DynamicK::IndexArray search(KView text, KView pattern);
 
 }  // namespace KMP
 
-#endif  // KMP
+#endif  // KMP_HPP

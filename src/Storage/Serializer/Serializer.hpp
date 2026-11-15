@@ -1,5 +1,5 @@
-#ifndef SERIALIZER
-#define SERIALIZER
+#ifndef SERIALIZER_HPP
+#define SERIALIZER_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -43,4 +43,4 @@ public:
 private:
     Serializer() = delete;
 
-#endif // SERIALIZER
+#endif // SERIALIZER_HPP
