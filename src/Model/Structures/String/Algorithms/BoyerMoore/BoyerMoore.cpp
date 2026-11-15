@@ -3,8 +3,10 @@
 using BV = BoyerView;
 using BA = BoyerArray;
 
-/* pattern = objeto BoyerView ; pattern_ = std::string*/ 
-BoyerMoore BoyerMoore(BV pattern) : pattern_(pattern.data(),pattern.size()){ // Converte StringView pra std::string 
+namespace BoyerMoore {
+
+/* pattern = objeto BoyerView ; pattern_ = std::string */
+BoyerMoore::BoyerMoore(BV pattern) : pattern_(pattern.data(), pattern.size()) {  // Converte StringView pra std::string
     if (pattern_.empty()) {
         throw std::invalid_argument("BoyerMoore: o padrao nao pode ser vazio.");
     }
@@ -29,7 +31,7 @@ std::optional<std::size_t> BoyerMoore::find(BV text) const noexcept {
     return position;
 }
 
- BA find_all(BV text) const {
+BA BoyerMoore::find_all(BV text) const {
     BA positions;
     search(text, [&positions](std::size_t position) {
         positions.push_back(position);
@@ -60,7 +62,7 @@ void BoyerMoore::build_bad_character_table() {
 void BoyerMoore::build_good_suffix_table() {
     const std::size_t m = pattern_.size();
     good_suffix_shift_.assign(m + 1, 0);
-   BA border(m + 1, 0);
+    std::vector<std::size_t> border(m + 1, 0);
 
     std::size_t i = m;
     std::size_t j = m + 1;
@@ -93,9 +95,11 @@ std::ptrdiff_t BoyerMoore::bad_character_shift(std::size_t mismatch_index, char 
 }
 
 std::size_t find_first(BV text, BV pattern) {
-    return BV(pattern).find_first(text);
+    return BoyerMoore(pattern).find_first(text);
 }
 
 BA find_all(BV text, BV pattern) {
-    return BV(pattern).find_all(text);
+    return BoyerMoore(pattern).find_all(text);
 }
+
+}  // namespace BoyerMoore

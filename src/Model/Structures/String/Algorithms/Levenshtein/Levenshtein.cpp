@@ -3,6 +3,8 @@
 using LA = LevenArray;
 using LV = LevenView;
 
+namespace Levenshtein {
+
 LA::LevenshteinMatrix levenshtein_matrix(LV a, LV b) {
     const std::size_t n = a.size();
     const std::size_t m = b.size();
@@ -42,3 +44,5 @@ double levenshtein_similarity(LV a, LV b) {
     return 1.0 - static_cast<double>(levenshtein_distance(a, b)) /
                      static_cast<double>(max_len);
 }
+
+} // namespace Levenshtein

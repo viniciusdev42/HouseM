@@ -8,7 +8,7 @@
 #include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
 
 using KView = StringView::StringView;
-using DynamicK = DynamicArray::DynamicArray;
+using DynamicK = DynamicArray::IndexArray;
 
 namespace KMP {
 

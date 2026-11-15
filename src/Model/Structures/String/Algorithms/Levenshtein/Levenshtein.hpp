@@ -8,7 +8,7 @@
 #include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
 
 using LevenView = StringView::StringView;
-using LevenArray = DynamicArray::DynamicArray;
+using LevenArray = DynamicArray::LevenshteinMatrix;
 
 namespace Levenshtein {
 

@@ -9,7 +9,7 @@
 #include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
 
 using KarpView = StringView::StringView;
-using KarpArray = DynamicArray::DynamicArray;
+using KarpArray = DynamicArray::IndexArray;
 
 namespace RabinKarp {
 

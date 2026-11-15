@@ -3,6 +3,8 @@
 using KV = KarpView;
 using KA = KarpArray;
 
+namespace RabinKarp {
+
 std::uint64_t to_value(char c) noexcept {
     return static_cast<unsigned char>(c);
 }
@@ -46,3 +48,4 @@ std::optional<std::size_t> find_first(KV text, KV pattern) {
     return first_position;
 }
 
+} // namespace RabinKarp

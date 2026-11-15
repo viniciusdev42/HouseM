@@ -3,6 +3,8 @@
 using KV = KView;
 using DK = DynamicK;
 
+namespace KMP {
+
 DK::IndexArray computeLPS(KV pattern) {
     DK::IndexArray lps(pattern.size(), 0);
 
@@ -33,7 +35,7 @@ DK::IndexArray search(KV text, KV pattern) {
         return occurrences;
     }
 
-   DK::IndexArrays lps = computeLPS(pattern);
+   DK::IndexArray lps = computeLPS(pattern);
 
     std::size_t matched = 0;
     for (std::size_t i = 0; i < text.size(); ++i) {
@@ -53,3 +55,5 @@ DK::IndexArray search(KV text, KV pattern) {
 
     return occurrences;
 }
+
+} // namespace KMP
