@@ -85,20 +85,21 @@ std::vector<ScheduledTask> SchedulerService::collect(Predicate predicate) const 
 // ---------------------------------------------------------------------------
 // Construção e sincronização
 // ---------------------------------------------------------------------------
-void SchedulerService::buildSchedule(const std::vector<Task>& tasks) {
+void SchedulerService::buildSchedule() {
     if (!storage_.index.empty()) {
         throw std::logic_error("SchedulerService: schedule already built; use rebuildSchedule to replace it");
     }
-    // Constrói fora do estado atual: se algo falhar, nada é alterado.
-    storage_ = buildStorage(tasks, nullptr);
+    // Lê e constrói fora do estado atual: se algo falhar, nada é alterado.
+    storage_ = buildStorage(repository_->findAll(), nullptr);
 }
 
-void SchedulerService::rebuildSchedule(const std::vector<Task>& tasks) {
-    storage_ = buildStorage(tasks, nullptr);
+void SchedulerService::rebuildSchedule() {
+    storage_ = buildStorage(repository_->findAll(), nullptr);
 }
 
-void SchedulerService::refreshScheduler(const std::vector<Task>& currentTasks) {
-    storage_ = buildStorage(currentTasks, &storage_);
+void SchedulerService::refreshScheduler() {
+    // A atribuição só ocorre depois que a leitura e a construção deram certo.
+    storage_ = buildStorage(repository_->findAll(), &storage_);
 }
 
 // ---------------------------------------------------------------------------

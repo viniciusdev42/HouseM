@@ -2,20 +2,21 @@
 #define SCHEDULER_SERVICE_HPP
 
 #include <chrono>
+#include <cstddef>
 #include <map>
 #include <optional>
 #include <set>
 #include <vector>
 
-#include "src/Model/Entities/Task/Task.hpp"
+#include "src/Model/Repositories/ITaskRepository.hpp"
 
 namespace SchedulerService {
 
 // ---------------------------------------------------------------------------
 // ScheduledTask: visão de uma tarefa dentro do agendamento.
-// Guarda um snapshot da Task e a prioridade "de agendamento". Essa prioridade
-// começa igual à da Task, mas pode divergir após updateTaskPriority, que NÃO
-// altera a entidade Task.
+// Guarda um snapshot da Task (lido do repositório) e a prioridade "de
+// agendamento". Essa prioridade começa igual à da Task, mas pode divergir após
+// updateTaskPriority, que NÃO altera a entidade Task nem o repositório.
 // ---------------------------------------------------------------------------
 struct ScheduledTask {
     Task task;
@@ -33,41 +34,47 @@ struct ScheduledTaskOrder {
 };
 
 // ---------------------------------------------------------------------------
-// SchedulerService:  Serviço que mantém as tarefas ordenadas.
+// SchedulerService: serviço que mantém as tarefas ordenadas.
 //
-// - Trabalha sobre cópias (snapshots) das tarefas; para refletir mudanças
-//   feitas nas Tasks originais, use refreshScheduler.
+// - As tarefas são obtidas do ITaskRepository injetado (somente leitura). O
+//   scheduler nunca grava no repositório.
+// - O repositório NÃO é de propriedade do scheduler e deve sobreviver a ele.
+// - Trabalha sobre snapshots: mudanças feitas no repositório só aparecem após
+//   refreshScheduler (ou rebuildSchedule).
 // - Tarefas concluídas nunca entram no agendamento.
-// - Não é thread-safe; sincronize externamente se necessário.
+// - Não é thread-safe; sincronize externamente se necessário. (O repositório
+//   em memória, por si só, já é thread-safe.)
 // - Não é copiável (o índice interno guarda iteradores); é movível.
 // ---------------------------------------------------------------------------
 class SchedulerService {
 public:
-    using Clock = Task::Clock;
-    using TimePoint = Task::TimePoint;
+    using Repository = ITaskRepository::ITaskRepository;
+    using Clock = Repository::Clock;
+    using TimePoint = Repository::TimePoint;
     using Duration = Clock::duration;
 
     static constexpr std::chrono::hours kDefaultUrgencyWindow{24};
 
-    SchedulerService() = default;
+    explicit SchedulerService(const Repository& repository) noexcept : repository_(&repository) {}
     SchedulerService(const SchedulerService&) = delete;
     SchedulerService& operator=(const SchedulerService&) = delete;
     SchedulerService(SchedulerService&&) noexcept = default;
     SchedulerService& operator=(SchedulerService&&) noexcept = default;
     ~SchedulerService() = default;
 
-    // Monta o agendamento inicial. Exige scheduler vazio (senão, std::logic_error)
-    // e ids únicos (senão, std::invalid_argument). Ignora tarefas concluídas.
-    void buildSchedule(const std::vector<Task>& tasks);
+    // Monta o agendamento inicial a partir do repositório. Exige scheduler
+    // vazio (senão, std::logic_error). Ignora tarefas concluídas.
+    void buildSchedule();
 
     // Descarta todo o agendamento atual (inclusive prioridades alteradas via
-    // updateTaskPriority) e o reconstrói a partir de 'tasks'.
-    void rebuildSchedule(const std::vector<Task>& tasks);
+    // updateTaskPriority) e o reconstrói a partir do repositório.
+    void rebuildSchedule();
 
-    // Sincroniza o agendamento com o estado atual das tarefas: remove as que
-    // sumiram ou foram concluídas, inclui as novas e atualiza os snapshots,
-    // PRESERVANDO as prioridades alteradas via updateTaskPriority.
-    void refreshScheduler(const std::vector<Task>& currentTasks);
+    // Sincroniza o agendamento com o estado atual do repositório: remove as
+    // tarefas que sumiram ou foram concluídas, inclui as novas e atualiza os
+    // snapshots, PRESERVANDO as prioridades alteradas via updateTaskPriority.
+    // Se a leitura do repositório falhar, o agendamento permanece intacto.
+    void refreshScheduler();
 
     // Próxima tarefa disponível (pendente) na ordem de agendamento.
     std::optional<ScheduledTask> getNextTask() const;
@@ -89,11 +96,13 @@ public:
     // Tarefas disponíveis para iniciar (pendentes), em ordem de agendamento.
     std::vector<ScheduledTask> getAvaliableTasks() const;
 
-    // Altera a prioridade SOMENTE na estrutura de agendamento (a Task não muda)
-    // e reposiciona a tarefa. Retorna false se o id não está agendado.
+    // Altera a prioridade SOMENTE na estrutura de agendamento (a Task e o
+    // repositório não mudam) e reposiciona a tarefa. Retorna false se o id
+    // não está agendado.
     [[nodiscard]] bool updateTaskPriority(const TaskId& id, Priority newPriority);
 
-    // Remove a tarefa do agendamento. Retorna false se o id não está agendado.
+    // Remove a tarefa do agendamento (não do repositório). Retorna false se o
+    // id não está agendado.
     [[nodiscard]] bool removeTaskFromScheduler(const TaskId& id);
 
     std::size_t size() const noexcept { return storage_.ordered.size(); }
@@ -118,6 +127,8 @@ private:
     template <typename Predicate>
     std::vector<ScheduledTask> collect(Predicate predicate) const;
 
+    // Ponteiro (e não referência) para manter o scheduler movível por atribuição.
+    const Repository* repository_;
     Storage storage_;
 };
 
