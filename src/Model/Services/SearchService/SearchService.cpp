@@ -39,10 +39,43 @@ std::vector<Task> filterTasks(const SearchService::Repository& repository, Predi
     return result;
 }
 
+// Bytes >= 0x80 fazem parte de sequências UTF-8; tratá-los como letras evita
+// partir palavras acentuadas no meio.
+bool isWordByte(unsigned char c) {
+    return c >= 0x80 || std::isalnum(c) != 0;
+}
+
+void appendWords(const std::string& text, std::vector<std::string>& words) {
+    std::string current;
+    for (unsigned char c : text) {
+        if (isWordByte(c)) {
+            current.push_back(c < 0x80 ? static_cast<char>(std::tolower(c))
+                                       : static_cast<char>(c));
+        } else if (!current.empty()) {
+            words.push_back(std::move(current));
+            current.clear();
+        }
+    }
+    if (!current.empty()) {
+        words.push_back(std::move(current));
+    }
+}
+
+std::vector<std::string> extractIndexWords(const Task& task) {
+    std::vector<std::string> words;
+    appendWords(task.title(), words);
+    appendWords(task.description(), words);
+    std::sort(words.begin(), words.end());
+    words.erase(std::unique(words.begin(), words.end()), words.end());
+    return words;
+}
+
 }  // namespace
 
-SearchService::SearchService(const Repository& repository) noexcept
-    : repository_(repository) {}
+SearchService::SearchService(const Repository& repository)
+    : repository_(repository) {
+    rebuildIndex();
+}
 
 std::optional<Task> SearchService::searchById(const TaskId& id) const {
     return repository_.findById(id);
@@ -94,6 +127,30 @@ std::vector<Task> SearchService::searchByDeadline(TimePoint from, TimePoint to) 
         }
     }
     return result;
+}
+
+std::vector<std::string> SearchService::autocomplete(const std::string& prefix,
+                                                     std::size_t maxResults) const {
+    requireNonEmptyTerm(prefix, "autocomplete");
+    return index_.autocomplete(toLower(prefix), maxResults);
+}
+
+void SearchService::indexTask(const Task& task) {
+    index_.updateTask(task.id(), extractIndexWords(task));
+}
+
+void SearchService::removeTaskFromIndex(const TaskId& id) {
+    index_.removeTask(id);
+}
+
+void SearchService::rebuildIndex() {
+    // Constrói em uma Trie nova e troca no final: se algo lançar exceção,
+    // o índice anterior permanece intacto.
+    Trie fresh;
+    for (const Task& task : repository_.findAll()) {
+        fresh.updateTask(task.id(), extractIndexWords(task));
+    }
+    index_ = std::move(fresh);
 }
 
 }  // namespace SearchService
