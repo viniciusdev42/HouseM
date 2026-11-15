@@ -72,6 +72,35 @@ std::vector<std::string> extractIndexWords(const Task& task) {
 
 }  // namespace
 
+int compareIgnoreCase(const std::string& a, const std::string& b) {
+    const std::size_t n = std::min(a.size(), b.size());
+    for (std::size_t i = 0; i < n; ++i) {
+        const int ca = std::tolower(static_cast<unsigned char>(a[i]));
+        const int cb = std::tolower(static_cast<unsigned char>(b[i]));
+        if (ca != cb) {
+            return ca < cb ? -1 : 1;
+        }
+    }
+    if (a.size() == b.size()) {
+        return 0;
+    }
+    return a.size() < b.size() ? -1 : 1;
+}
+
+int compareByField(const Task& a, const Task& b, SortField field) {
+    switch (field) {
+        case SortField::Title:
+            return compareIgnoreCase(a.title(), b.title());
+        case SortField::Priority:
+            return static_cast<int>(a.priority()) - static_cast<int>(b.priority());
+        case SortField::Status:
+            return static_cast<int>(a.status()) - static_cast<int>(b.status());
+        case SortField::Deadline:
+            break;  // tratado em sortTasks
+    }
+    return 0;
+}
+
 SearchService::SearchService(const Repository& repository)
     : repository_(repository) {
     rebuildIndex();
@@ -153,4 +182,66 @@ void SearchService::rebuildIndex() {
     index_ = std::move(fresh);
 }
 
+void SearchService::sortTasks(std::vector<Task>& tasks, SortSpec spec) {
+    const bool asc = spec.order == SortOrder::Ascending;
+
+    if (spec.field == SortField::Deadline) {
+        std::stable_sort(tasks.begin(), tasks.end(), [asc](const Task& a, const Task& b) {
+            const auto da = a.deadline();
+            const auto db = b.deadline();
+            if (!da.has_value() || !db.has_value()) {
+                return da.has_value() && !db.has_value();  // sem prazo vai para o fim
+            }
+            return asc ? *da < *db : *da > *db;
+        });
+        return;
+    }
+
+    std::stable_sort(tasks.begin(), tasks.end(), [asc, spec](const Task& a, const Task& b) {
+        const int cmp = compareByField(a, b, spec.field);
+        return asc ? cmp < 0 : cmp > 0;
+    });
+}
+
+std::vector<Task> SearchService::searchAll(SortSpec spec) const {
+    std::vector<Task> result = repository_.findAll();
+    sortTasks(result, spec);
+    return result;
+}
+
+std::vector<Task> SearchService::searchByPriorityRange(Priority from, Priority to,
+                                                       SortSpec spec) const {
+    const int lo = static_cast<int>(from);
+    const int hi = static_cast<int>(to);
+    if (lo > hi) {
+        throw std::invalid_argument(
+            "SearchService::searchByPriorityRange: 'from' must not be greater than 'to'");
+    }
+
+    std::vector<Task> result = filterTasks(repository_, [lo, hi](const Task& task) {
+        const int p = static_cast<int>(task.priority());
+        return p >= lo && p <= hi;
+    });
+    sortTasks(result, spec);
+    return result;
+}
+
+std::vector<Task> SearchService::searchByTitleRange(const std::string& from,
+                                                    const std::string& to,
+                                                    SortSpec spec) const {
+    if (compareIgnoreCase(from, to) > 0) {
+        throw std::invalid_argument(
+            "SearchService::searchByTitleRange: 'from' must not be greater than 'to'");
+    }
+
+    std::vector<Task> result = filterTasks(repository_, [&from, &to](const Task& task) {
+        return compareIgnoreCase(task.title(), from) >= 0 &&
+               compareIgnoreCase(task.title(), to) <= 0;
+    });
+    sortTasks(result, spec);
+    return result;
+}
+
 }  // namespace SearchService
+
+
