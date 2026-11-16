@@ -8,7 +8,9 @@
 #include <string>
 #include <utility>
 
-using BV = BV;
+namespace StringBuffer {
+
+namespace {
 
 // Limite conservador para evitar overflow em contas de capacidade + 1 e
 // em somas de tamanhos.
@@ -22,7 +24,9 @@ void ensureWithinMaxSize(std::size_t requested, const char* operation) {
     }
 }
 
-// Cópia estável de uma StringBuffer::View, independente do buffer de origem.
+} // namespace
+
+// Cópia estável de uma view(), independente do buffer de origem.
 std::string toStdString(BV text) {
     return text.empty() ? std::string() : std::string(text.data(), text.size());
 }
@@ -46,6 +50,22 @@ std::size_t findFrom(BV haystack, BV needle, std::size_t from) {
     return kNpos;
 }
 
+std::size_t StringBuffer::size() const noexcept { return size_; }
+
+std::size_t StringBuffer::capacity() const noexcept { return capacity_; }
+
+bool StringBuffer::empty() const noexcept { return size_ == 0; }
+
+char& StringBuffer::operator[](std::size_t i) noexcept { return data_[i]; }
+
+char StringBuffer::operator[](std::size_t i) const noexcept { return data_[i]; }
+
+const char* StringBuffer::c_str() const noexcept { return data_ ? data_.get() : ""; }
+
+BufferView StringBuffer::view() const noexcept { return BufferView(c_str(), size_); }
+
+std::string StringBuffer::str() const { return std::string(c_str(), size_); }
+
 // ---------------------------------------------------------------------------
 // Construção, cópia, movimentação
 // ---------------------------------------------------------------------------
@@ -60,7 +80,7 @@ StringBuffer::StringBuffer(std::size_t initialCapacity) {
     terminate();
 }
 
-StringBuffer::StringBuffer(StringView::StringView initialContent)
+StringBuffer::StringBuffer(BufferView initialContent)
     : StringBuffer(std::max(static_cast<std::size_t>(initialContent.size()), kDefaultCapacity)) {
     append(initialContent);
 }
@@ -129,7 +149,7 @@ StringBuffer& StringBuffer::insert(std::size_t pos, std::size_t count, char ch) 
     return *this;
 }
 
-StringBuffer& StringBuffer::insert(std::size_t pos, StringView::StringView text) {
+StringBuffer& StringBuffer::insert(std::size_t pos, BufferView text) {
     checkPosition(pos, "insert");
     if (text.empty()) {
         return *this;
@@ -145,7 +165,7 @@ StringBuffer& StringBuffer::insert(std::size_t pos, StringView::StringView text)
     return *this;
 }
 
-StringBuffer& StringBuffer::append(StringView::StringView text) {
+StringBuffer& StringBuffer::append(BufferView text) {
     return insert(size_, text);
 }
 
@@ -178,7 +198,7 @@ void StringBuffer::clear() noexcept {
 // ---------------------------------------------------------------------------
 
 StringBuffer& StringBuffer::replace(std::size_t pos, std::size_t count,
-                                    StringView::StringView text) {
+                                    BufferView text) {
     checkPosition(pos, "replace");
     const std::size_t effectiveCount = std::min(count, size_ - pos);
     if (effectiveCount == 0 && text.empty()) {
@@ -195,33 +215,31 @@ StringBuffer& StringBuffer::replace(std::size_t pos, std::size_t count,
     return *this;
 }
 
-std::size_t StringBuffer::replaceAll(StringView::StringView target,
-                                     StringView::StringView replacement) {
-    if (target.empty()) {
+std::size_t StringBuffer::replaceAll(BufferView target,
+                                     BufferView replacement) {
+    
+ if (target.empty()) {
         throw std::invalid_argument("StringBuffer::replaceAll: o trecho a localizar nao pode ser vazio");
     }
-    // Cópias estáveis: replace() pode realocar o buffer e invalidar views
-    // que apontem para dentro dele.
-    const std::string stableTarget = toStdString(target);
-    const std::string stableReplacement = toStdString(replacement);
-    const BV targetView = toView(stableTarget);
-    const BV replacementView = toView(stableReplacement);
-
-    std::size_t replacements = 0;
-    std::size_t searchFrom = 0;
-    while (true) {
-        // StringBuffer::View() é reconstruída a cada iteração, pois o buffer pode ter sido realocado.
-        const std::size_t index = findFrom(BV(), targetView, searchFrom);
-        if (index == kNpos) {
-            break;
-        }
-        replace(index, targetView.size(), replacementView);
-        // Avança além do trecho inserido para não reprocessá-lo.
-        searchFrom = index + replacementView.size();
-        ++replacements;
+    const BufferView src = view();
+    std::string out;
+    std::size_t count = 0, from = 0, idx;
+    while ((idx = src.find(target, from)) != BufferView::npos) {
+        out.append(src.data() + from, idx - from);
+        out.append(replacement.data(), replacement.size());
+        from = idx + target.size();
+        ++count;
     }
-    return replacements;
-}
+    if (count == 0) return 0;
+    out.append(src.data() + from, src.size() - from);
+
+    ensureWithinMaxSize(out.size(), "replaceAll");
+    ensureCapacity(out.size());              // pode lançar: nada foi alterado ainda
+    std::memcpy(data_.get(), out.data(), out.size());
+    size_ = out.size();
+    terminate();
+    return count;
+   }
 
 // ---------------------------------------------------------------------------
 // Capacidade e tamanho
@@ -287,7 +305,7 @@ void StringBuffer::checkPosition(std::size_t pos, const char* operation) const {
     }
 }
 
-bool StringBuffer::overlapsBuffer(StringView::StringView text) const noexcept {
+bool StringBuffer::overlapsBuffer(BufferView text) const noexcept {
     if (!data_ || text.empty()) {
         return false;
     }
@@ -343,3 +361,5 @@ void StringBuffer::splice(std::size_t pos, std::size_t removeCount, std::size_t 
     size_ = newSize;
     terminate();
 }
+
+} // namespace StringBuffer
