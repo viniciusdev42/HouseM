@@ -8,11 +8,13 @@
 
 #include "src/Model/Repositories/ITaskRepository.hpp"
 #include "src/Model/Structures/TRIE/TRIE.hpp"
+#include"src/Model/Structures/String/Algorithms/KMP/KMP.hpp"
 
 namespace SearchService {
 
 enum class SortField { Title, Priority, Status, Deadline };
 enum class SortOrder { Ascending, Descending };
+enum class SubstringScope { Title, Description, Both };
 
 struct SortSpec {
     SortField field = SortField::Title;
@@ -46,6 +48,13 @@ public:
     std::vector<Task> searchByTitleRange(
         const std::string& from, const std::string& to,
         SortSpec spec = {SortField::Title, SortOrder::Ascending}) const;
+
+     // Pesquisa por substring (KMP), sem distinguir maiúsculas de minúsculas.
+    // Com SubstringScope::Both, a tarefa casa se o termo aparecer no título
+    // OU na descrição. Por padrão, mantém a ordem retornada pelo repositório.
+    std::vector<Task> searchBySubstring(const std::string& term,
+                                        SubstringScope scope = SubstringScope::Both,
+                                        SortSpec spec = {}) const;
 
     // Todas as tarefas, ordenadas segundo 'spec'.
     std::vector<Task> searchAll(SortSpec spec = {}) const;

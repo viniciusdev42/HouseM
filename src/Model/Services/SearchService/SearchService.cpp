@@ -20,6 +20,17 @@ bool containsIgnoreCase(const std::string& text, const std::string& lowerTerm) {
     return toLower(text).find(lowerTerm) != std::string::npos;
 }
 
+// Único ponto que conhece a conversão std::string -> KView.
+// Se o construtor de StringView for diferente, só esta função muda.
+KView toView(const std::string& text) {
+    return KView(text.data(), text.size());
+}
+
+bool kmpContainsIgnoreCase(const std::string& text, const std::string& lowerTerm) {
+    const std::string lowerText = toLower(text);
+    return KMP::search(toView(lowerText), toView(lowerTerm)).size() > 0;
+}
+
 void requireNonEmptyTerm(const std::string& term, const char* operation) {
     if (term.empty()) {
         throw std::invalid_argument(std::string("SearchService::") + operation +
@@ -124,6 +135,27 @@ std::vector<Task> SearchService::searchByDescription(const std::string& term) co
     return filterTasks(repository_, [&lowerTerm](const Task& task) {
         return containsIgnoreCase(task.description(), lowerTerm);
     });
+}
+
+std::vector<Task> SearchService::searchBySubstring(const std::string& term,
+                                                   SubstringScope scope,
+                                                   SortSpec spec) const {
+    requireNonEmptyTerm(term, "searchBySubstring");
+    const std::string lowerTerm = toLower(term);
+
+    const bool inTitle = scope != SubstringScope::Description;
+    const bool inDescription = scope != SubstringScope::Title;
+
+    std::vector<Task> result = filterTasks(
+        repository_, [&lowerTerm, inTitle, inDescription](const Task& task) {
+            return (inTitle && kmpContainsIgnoreCase(task.title(), lowerTerm)) ||
+                   (inDescription && kmpContainsIgnoreCase(task.description(), lowerTerm));
+        });
+
+    // Só reordena se o chamador pediu uma ordenação explícita
+    // (o SortSpec padrão é Title/Ascending, então comparamos com o padrão).
+    sortTasks(result, spec);
+    return result;
 }
 
 std::vector<Task> SearchService::searchByStatus(Status status) const {
