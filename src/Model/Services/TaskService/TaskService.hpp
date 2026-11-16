@@ -37,10 +37,11 @@ public:
                          NowProvider nowProvider = [] { return Clock::now(); });
 
     // Criação
-    Task::Task createTask(std::string title,
-                            std::string description,
-                            Task::Priority priority,
-                            std::optional<TimePoint> deadline = std::nullopt);
+    Task::Task createTask(Task::TaskId id,
+                          std::string title,
+                          std::string description,
+                          Task::Priority priority,
+                          std::optional<TimePoint> deadline = std::nullopt);
 
     // Transições de estado
     Task::Task startTask(const Task::TaskId& id);

@@ -19,10 +19,11 @@ TaskService::TaskService(std::shared_ptr<Task::ITaskRepository> repository,
 
 // ----------------------------- Criação -------------------------------------
 
-Task::Task TaskService::createTask(std::string title,
-                                     std::string description,
-                                     Task::Priority priority,
-                                     std::optional<TimePoint> deadline) {
+Task::Task TaskService::createTask(Task::TaskId id,
+                                   std::string title,
+                                   std::string description,
+                                   Task::Priority priority,
+                                   std::optional<TimePoint> deadline) {
     Task::Task task = Task::Task::create(std::move(title),
                                              std::move(description),
                                              priority,
