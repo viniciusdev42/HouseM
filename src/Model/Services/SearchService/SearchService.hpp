@@ -11,6 +11,7 @@
 #include"src/Model/Structures/String/Algorithms/KMP/KMP.hpp"
 #include "src/Model/Structures/String/Algorithms/RabinKarp/RabinKarp.hpp"
 #include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
+#include "src/Model/Structures/String/Normalization/Normalizer.hpp"
 
 namespace SearchService {
 
@@ -32,9 +33,10 @@ struct SortSpec {
 class SearchService {
 public:
     using Repository = ITaskRepository::ITaskRepository;
+    using TextNormalizer = Normalizer::Normalizer
     using TimePoint = Repository::TimePoint;
 
-    explicit SearchService(const Repository& repository);
+    explicit SearchService(const Repository& repository, const TextNormalizer& normalizer);
 
     std::optional<Task> searchById(const TaskId& id) const;
     std::vector<Task> searchByTitle(const std::string& term) const;
@@ -108,7 +110,17 @@ public:
     void rebuildIndex();
 
 private:
+    // Aplica normalizer_.normalize() e devolve o resultado como std::string.
+    std::string normalize(const std::string& text) const;
+
+    // Valida (não vazio, antes e depois de normalizar) e normaliza um termo
+    // de busca. 'operation' só alimenta a mensagem de erro.
+    std::string normalizeTerm(const std::string& term, const char* operation) const;
+
+    std::vector<std::string> extractIndexWords(const Task& task) const;
+
     const Repository& repository_;
+    const TextNormalizer& normalizer_;
     Trie index_;
 };
 

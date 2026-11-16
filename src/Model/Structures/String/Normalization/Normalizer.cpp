@@ -3,6 +3,8 @@
 using NV = NormalizerView;
 using NB = NormalizerBuffer;
 
+namespace Normalizer {
+
 bool inRange(char32_t c, char32_t low, char32_t high) {
     return c >= low && c <= high;
 }
@@ -277,3 +279,5 @@ bool Normalizer::equivalent(NV lhs, NV rhs) const {
     const NB right = normalize(rhs);
     return left.view() == right.view();
 }
+
+} // namespace Normalizer

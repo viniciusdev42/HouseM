@@ -9,53 +9,43 @@ namespace SearchService {
 
 namespace {
 
-std::string toLower(std::string text) {
-    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return text;
-}
-
-bool containsIgnoreCase(const std::string& text, const std::string& lowerTerm) {
-    return toLower(text).find(lowerTerm) != std::string::npos;
-}
-
 // Único ponto que conhece a conversão std::string -> KView.
 // Se o construtor de StringView for diferente, só esta função muda.
 KView toView(const std::string& text) {
     return KView(text.data(), text.size());
 }
 
-bool kmpContainsIgnoreCase(const std::string& text, const std::string& lowerTerm) {
-    const std::string lowerText = toLower(text);
-    return KMP::search(toView(lowerText), toView(lowerTerm)).size() > 0;
+// Ambos os argumentos já devem estar normalizados (o chamador normaliza uma
+// única vez por tarefa, e não uma vez por padrão).
+bool kmpContains(const std::string& normalizedText, const std::string& normalizedTerm) {
+    return KMP::search(toView(normalizedText), toView(normalizedTerm)).size() > 0;
 }
 
-// Ambos os argumentos já devem estar em minúsculas (o chamador lowercasa uma
-// única vez por tarefa, e não uma vez por padrão).
+// Ambos os argumentos já devem estar estar normalizados
 bool rabinKarpContains(const std::string& lowerText, const std::string& lowerPattern) {
     // Atalho barato; também evita depender de como o Rabin-Karp trata
     // padrões maiores que o texto.
-    if (lowerPattern.size() > lowerText.size()) {
+    if (normalizedPattern.size() > normalizedText.size()) {
         return false;
     }
-    return RabinKarp::find_first(toKarpView(lowerText), toKarpView(lowerPattern)).has_value();
+    return RabinKarp::find_first(toKarpView(normalizedText), toKarpView(normalizedPattern))
+        .has_value();
 }
 
-bool matchesPatterns(const Task& task, const std::vector<std::string>& lowerPatterns,
+// 'title' e 'description' já normalizados ficam vazios quando o escopo exclui o campo correspondente.
+bool matchesPatterns(const std::string& title, const std::string& description,
+                     const std::vector<std::string>& normalizedPatterns,
                      PatternMatchMode mode, bool inTitle, bool inDescription) {
-    const std::string title = inTitle ? toLower(task.title()) : std::string();
-    const std::string description = inDescription ? toLower(task.description()) : std::string();
-
     const auto matches = [&](const std::string& pattern) {
         return (inTitle && rabinKarpContains(title, pattern)) ||
                (inDescription && rabinKarpContains(description, pattern));
     };
 
     return mode == PatternMatchMode::All
-               ? std::all_of(lowerPatterns.begin(), lowerPatterns.end(), matches)
-               : std::any_of(lowerPatterns.begin(), lowerPatterns.end(), matches);
+               ? std::all_of(normalizedPatterns.begin(), normalizedPatterns.end(), matches)
+               : std::any_of(normalizedPatterns.begin(), normalizedPatterns.end(), matches);
 }
+
 
 
 void requireNonEmptyTerm(const std::string& term, const char* operation) {
@@ -63,6 +53,33 @@ void requireNonEmptyTerm(const std::string& term, const char* operation) {
         throw std::invalid_argument(std::string("SearchService::") + operation +
                                     ": search term must not be empty");
     }
+}
+
+// Bytes >= 0x80 fazem parte de sequências UTF-8; tratá-los como letras evita
+// partir palavras não-latinas no meio.
+bool isWordByte(unsigned char c) {
+    return c >= 0x80 || std::isalnum(c) != 0;
+}
+
+// O texto já chega normalizado (minúsculas, sem acentos), então só separa.
+void appendWords(const std::string& normalizedText, std::vector<std::string>& words) {
+    std::string current;
+    for (unsigned char c : normalizedText) {
+        if (isWordByte(c)) {
+            current.push_back(static_cast<char>(c));
+        } else if (!current.empty()) {
+            words.push_back(std::move(current));
+            current.clear();
+        }
+    }
+    if (!current.empty()) {
+        words.push_back(std::move(current));
+    }
+}
+
+// Único ponto que conhece a conversão std::string -> LevenView.
+LevenView toLevenView(const std::string& text) {
+    return LevenView(text.data(), text.size());
 }
 
 // Busca textual: o repositório não tem índice para texto, então varre findAll().
@@ -150,9 +167,37 @@ int compareByField(const Task& a, const Task& b, SortField field) {
     return 0;
 }
 
-SearchService::SearchService(const Repository& repository)
-    : repository_(repository) {
+SearchService::SearchService(const Repository& repository,const TextNormalizer& normalizer)
+    : repository_(repository),normalizer_(normalizer) {
     rebuildIndex();
+}
+
+std::string SearchService::normalize(const std::string& text) const {
+    const TextNormalizer::NormalizerBuffer buffer =
+        normalizer_.normalize(TextNormalizer::NormalizerView(text.data(), text.size()));
+    const TextNormalizer::NormalizerView normalized = buffer.view();
+    return std::string(normalized.data(), normalized.size());
+}
+
+std::string SearchService::normalizeTerm(const std::string& term, const char* operation) const {
+    requireNonEmptyTerm(term, operation);
+    std::string normalized = normalize(term);
+    // Ex.: um termo composto só de acentos soltos some na normalização;
+    // buscá-lo casaria com tudo (ou com nada) de forma enganosa.
+    if (normalized.empty()) {
+        throw std::invalid_argument(std::string("SearchService::") + operation +
+                                    ": search term has no searchable content");
+    }
+    return normalized;
+}
+
+std::vector<std::string> SearchService::extractIndexWords(const Task& task) const {
+    std::vector<std::string> words;
+    appendWords(normalize(task.title()), words);
+    appendWords(normalize(task.description()), words);
+    std::sort(words.begin(), words.end());
+    words.erase(std::unique(words.begin(), words.end()), words.end());
+    return words;
 }
 
 std::optional<Task> SearchService::searchById(const TaskId& id) const {
@@ -160,38 +205,33 @@ std::optional<Task> SearchService::searchById(const TaskId& id) const {
 }
 
 std::vector<Task> SearchService::searchByTitle(const std::string& term) const {
-    requireNonEmptyTerm(term, "searchByTitle");
-    const std::string lowerTerm = toLower(term);
-    return filterTasks(repository_, [&lowerTerm](const Task& task) {
-        return containsIgnoreCase(task.title(), lowerTerm);
+    const std::string key = normalizeTerm(term, "searchByTitle");
+    return filterTasks(repository_, [this, &key](const Task& task) {
+        return normalize(task.title()).find(key) != std::string::npos;
     });
 }
 
 std::vector<Task> SearchService::searchByDescription(const std::string& term) const {
-    requireNonEmptyTerm(term, "searchByDescription");
-    const std::string lowerTerm = toLower(term);
-    return filterTasks(repository_, [&lowerTerm](const Task& task) {
-        return containsIgnoreCase(task.description(), lowerTerm);
+    const std::string key = normalizeTerm(term, "searchByDescription");
+    return filterTasks(repository_, [this, &key](const Task& task) {
+        return normalize(task.description()).find(key) != std::string::npos;
     });
 }
 
 std::vector<Task> SearchService::searchBySubstring(const std::string& term,
                                                    SubstringScope scope,
                                                    SortSpec spec) const {
-    requireNonEmptyTerm(term, "searchBySubstring");
-    const std::string lowerTerm = toLower(term);
+    const std::string key = normalizeTerm(term, "searchBySubstring");
 
     const bool inTitle = scope != SubstringScope::Description;
     const bool inDescription = scope != SubstringScope::Title;
 
     std::vector<Task> result = filterTasks(
-        repository_, [&lowerTerm, inTitle, inDescription](const Task& task) {
-            return (inTitle && kmpContainsIgnoreCase(task.title(), lowerTerm)) ||
-                   (inDescription && kmpContainsIgnoreCase(task.description(), lowerTerm));
+        repository_, [this, &key, inTitle, inDescription](const Task& task) {
+            return (inTitle && kmpContains(normalize(task.title()), key)) ||
+                   (inDescription && kmpContains(normalize(task.description()), key));
         });
 
-    // Só reordena se o chamador pediu uma ordenação explícita
-    // (o SortSpec padrão é Title/Ascending, então comparamos com o padrão).
     sortTasks(result, spec);
     return result;
 }
@@ -199,7 +239,7 @@ std::vector<Task> SearchService::searchBySubstring(const std::string& term,
 std::vector<Task> SearchService::searchByPattern(const std::string& pattern,
                                                  SubstringScope scope,
                                                  SortSpec spec) const {
-    requireNonEmptyTerm(pattern, "searchByPattern");
+        requireNonEmptyTerm(pattern, "searchByPattern");
     return searchByPatterns({pattern}, PatternMatchMode::Any, scope, spec);
 }
 
@@ -207,24 +247,28 @@ std::vector<Task> SearchService::searchByPatterns(const std::vector<std::string>
                                                   PatternMatchMode mode,
                                                   SubstringScope scope,
                                                   SortSpec spec) const {
-    if (patterns.empty()) {
+     if (patterns.empty()) {
         throw std::invalid_argument(
             "SearchService::searchByPatterns: at least one pattern is required");
     }
 
-    std::vector<std::string> lowerPatterns;
-    lowerPatterns.reserve(patterns.size());
+    std::vector<std::string> normalizedPatterns;
+    normalizedPatterns.reserve(patterns.size());
     for (const std::string& pattern : patterns) {
-        requireNonEmptyTerm(pattern, "searchByPatterns");
-        lowerPatterns.push_back(toLower(pattern));
+        normalizedPatterns.push_back(normalizeTerm(pattern, "searchByPatterns"));
     }
 
     const bool inTitle = scope != SubstringScope::Description;
     const bool inDescription = scope != SubstringScope::Title;
 
     std::vector<Task> result = filterTasks(
-        repository_, [&lowerPatterns, mode, inTitle, inDescription](const Task& task) {
-            return matchesPatterns(task, lowerPatterns, mode, inTitle, inDescription);
+        repository_, [this, &normalizedPatterns, mode, inTitle, inDescription](const Task& task) {
+            // Normaliza cada campo uma única vez por tarefa, não por padrão.
+            const std::string title = inTitle ? normalize(task.title()) : std::string();
+            const std::string description =
+                inDescription ? normalize(task.description()) : std::string();
+            return matchesPatterns(title, description, normalizedPatterns, mode, inTitle,
+                                   inDescription);
         });
 
     sortTasks(result, spec);
@@ -265,14 +309,13 @@ std::vector<Task> SearchService::searchByDeadline(TimePoint from, TimePoint to) 
 
 std::vector<std::string> SearchService::autocomplete(const std::string& prefix,
                                                      std::size_t maxResults) const {
-    requireNonEmptyTerm(prefix, "autocomplete");
-    return index_.autocomplete(toLower(prefix), maxResults);
+    return index_.autocomplete(normalizeTerm(prefix, "autocomplete"), maxResults);
 }
 
 std::vector<std::string> SearchService::suggest(const std::string& term,
                                                 std::size_t maxResults,
                                                 double minSimilarity) const {
-    requireNonEmptyTerm(term, "suggest");
+    const std::string normalizedTerm = normalizeTerm(term, "suggest");
     if (minSimilarity < 0.0 || minSimilarity > 1.0) {
         throw std::invalid_argument(
             "SearchService::suggest: minSimilarity must be in [0, 1]");
@@ -389,25 +432,29 @@ std::vector<Task> SearchService::searchByPriorityRange(Priority from, Priority t
         return p >= lo && p <= hi;
     });
     sortTasks(result, spec);
-    return result;
+    return result;                                                       
 }
 
 std::vector<Task> SearchService::searchByTitleRange(const std::string& from,
                                                     const std::string& to,
                                                     SortSpec spec) const {
-    if (compareIgnoreCase(from, to) > 0) {
+    // Limites vazios são válidos aqui (normalize("") == ""), como antes.
+    const std::string lowerBound = normalize(from);
+    const std::string upperBound = normalize(to);
+    if (lowerBound > upperBound) {
         throw std::invalid_argument(
             "SearchService::searchByTitleRange: 'from' must not be greater than 'to'");
     }
 
-    std::vector<Task> result = filterTasks(repository_, [&from, &to](const Task& task) {
-        return compareIgnoreCase(task.title(), from) >= 0 &&
-               compareIgnoreCase(task.title(), to) <= 0;
-    });
+    // A forma normalizada é ASCII minúsculo para texto latino, então a
+    // comparação byte a byte de std::string respeita a ordem lexicográfica.
+    std::vector<Task> result =
+        filterTasks(repository_, [this, &lowerBound, &upperBound](const Task& task) {
+            const std::string title = normalize(task.title());
+            return title >= lowerBound && title <= upperBound;
+        });
     sortTasks(result, spec);
     return result;
 }
 
-}  // namespace SearchService
-
-
+} // namespace SearchService
