@@ -2,7 +2,6 @@
 #define KMP_HPP
 
 #include <cstddef> 
-#include <cstdint>
 
 #include "src/Model/Structures/String/Core/StringView/StringView.hpp"
 #include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
@@ -12,9 +11,9 @@ using DynamicK = DynamicArray::IndexArray;
 
 namespace KMP {
 
-DynamicK::IndexArray computeLPS(KView pattern);
+DynamicK computeLPS(KView pattern);
 
-DynamicK::IndexArray search(KView text, KView pattern);
+DynamicK search(KView text, KView pattern);
 
 }  // namespace KMP
 

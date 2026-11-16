@@ -12,7 +12,7 @@ using LevenArray = DynamicArray::LevenshteinMatrix;
 
 namespace Levenshtein {
 
-LevenArray::LevenshteinMatrix levenshtein_matrix(LevenView a, LevenView b);
+LevenArray levenshtein_matrix(LevenView a, LevenView b);
 
 std::size_t levenshtein_distance(LevenView a, LevenView b);
 

@@ -30,8 +30,8 @@ std::uint64_t hash_of(KV text, std::size_t length) noexcept {
     return hash;
 }
 
-KA::IndexArray find_all(KV text, KV pattern) {
-   KA::IndexArray positions;
+KA find_all(KV text, KV pattern) {
+   KA positions;
     detail::for_each_match(text, pattern, [&positions](std::size_t position) {
         positions.push_back(position);
         return true;

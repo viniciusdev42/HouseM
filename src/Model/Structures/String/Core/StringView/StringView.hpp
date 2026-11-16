@@ -48,57 +48,60 @@ public:
     /// View sobre o conteúdo de uma std::string (não estende seu tempo de vida).
     StringView(const std::string& str) noexcept;
     
-    /// Primeira ocorrência de `needle` a partir de `pos`, ou npos.
-    /// Uma `needle` vazia retorna pos (se pos <= size()).
-    size_type find(StringView needle, size_type pos = 0) const noexcept;
+     /// View sobre [data, data + size). Não há verificação: o chamador garante
+    /// que o intervalo é válido.
+    constexpr StringView(const char* data, size_type size) noexcept
+        : data_(data), size_(size) {}
 
-    /// Primeira ocorrência de `ch` a partir de `pos`, ou npos.
-    size_type find(char ch, size_type pos = 0) const noexcept;
-    /// View sobre uma C-string terminada em '\0' (o terminador não faz
+     /// View sobre uma C-string terminada em '\0' (o terminador não faz
     /// parte da view). Um ponteiro nulo resulta em view vazia.
     StringView(const char* cString) noexcept;
+
+    /// View sobre o conteúdo de uma std::string (não estende seu tempo de vida).
+    StringView(const std::string& str) noexcept;
+
 
     // ------------------------------------------------------------------
     // Capacidade
     // ------------------------------------------------------------------
 
-    constexpr size_type size() const noexcept;
-    constexpr size_type length() const noexcept;
-    constexpr bool empty() const noexcept;
+    constexpr size_type size() const noexcept { return size_; }
+    constexpr size_type length() const noexcept { return size_; }
+    constexpr bool empty() const noexcept { return size_ == 0; }
 
     // ------------------------------------------------------------------
     // Acesso a elementos
     // ------------------------------------------------------------------
 
     /// Acesso sem verificação de limites. Pré-condição: index < size().
-    constexpr const_reference operator[](size_type index) const noexcept;
+    constexpr const_reference operator[](size_type index) const noexcept { return data_[index]; }
 
     /// Acesso com verificação de limites.
     /// @throws std::out_of_range se index >= size().
     const_reference at(size_type index) const;
 
     /// Pré-condição: !empty().
-    constexpr const_reference front() const noexcept;
+    constexpr const_reference front() const noexcept { return data_[0]; }
 
     /// Pré-condição: !empty().
-    constexpr const_reference back() const noexcept;
+    constexpr const_reference back() const noexcept { return data_[size_ - 1]; }
 
     /// Acesso direto aos dados, sem cópia. Pode ser nulo se a view for vazia.
-    constexpr const_pointer data() const noexcept;
+    constexpr const_pointer data() const noexcept { return data_; }
 
     // ------------------------------------------------------------------
     // Iteração
     // ------------------------------------------------------------------
 
-    constexpr const_iterator begin() const noexcept;
-    constexpr const_iterator end() const noexcept;
-    constexpr const_iterator cbegin() const noexcept;
-    constexpr const_iterator cend() const noexcept;
+    constexpr const_iterator begin() const noexcept { return data_; }
+    constexpr const_iterator end() const noexcept { return data_ + size_; }
+    constexpr const_iterator cbegin() const noexcept { return begin(); }
+    constexpr const_iterator cend() const noexcept { return end(); }
 
-    const_reverse_iterator rbegin() const noexcept;
-    const_reverse_iterator rend() const noexcept;
-    const_reverse_iterator crbegin() const noexcept;
-    const_reverse_iterator crend() const noexcept;
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+    const_reverse_iterator crbegin() const noexcept { return rbegin(); }
+    const_reverse_iterator crend() const noexcept { return rend(); }
 
     // ------------------------------------------------------------------
     // Subviews
@@ -110,6 +113,17 @@ public:
     StringView substr(size_type pos = 0, size_type count = npos) const;
 
     // ------------------------------------------------------------------
+    // Busca
+    // ------------------------------------------------------------------
+
+    /// Primeira ocorrência de `needle` a partir de `pos`, ou npos.
+    /// Uma `needle` vazia retorna pos (se pos <= size()).
+    size_type find(StringView needle, size_type pos = 0) const noexcept;
+
+    /// Primeira ocorrência de `ch` a partir de `pos`, ou npos.
+    size_type find(char ch, size_type pos = 0) const noexcept;
+
+    ------------------------------------------------------------------
     // Comparação
     // ------------------------------------------------------------------
 
