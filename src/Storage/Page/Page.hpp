@@ -40,6 +40,7 @@ struct PageHeader {
  * mesmo quando a Page é compactada internamente.
  */
 class Page {
+    friend class DiskManager;
 public:
     Page();
 

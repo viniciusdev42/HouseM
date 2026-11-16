@@ -2,46 +2,55 @@
 #define PAGE_MANAGER_HPP
 
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 #include "src/Storage/Page/Page.hpp"
+#include "src/Storage/Page/PageBuffer.hpp"
 
 /**
- * Gerenciador de Pages em memória.
+ * Gerenciador de Pages.
  *
- * Responsável apenas por alocar e liberar Pages. Cada Page recebe um pageId
- * único; ids de Pages liberadas são reaproveitados em alocações futuras.
- *
- * O PageManager é o dono das Pages: ponteiros devolvidos por allocatePage()
- * tornam-se inválidos após freePage() do respectivo pageId ou após a
- * destruição do PageManager.
+ * Responsável por alocar/liberar pageIds e por obter Pages por meio do
+ * PageBuffer, que é quem mantém as Pages em memória e as persiste por meio de DiskManager.
  */
 class PageManager {
 public:
-    PageManager() = default;
+    explicit PageManager(PageBuffer& pageBuffer) noexcept;
 
     PageManager(const PageManager&) = delete;
     PageManager& operator=(const PageManager&) = delete;
 
     /**
-     * Aloca uma Page nova e vazia (já inicializada com seu pageId).
-     * Reaproveita o id de uma Page previamente liberada, se houver.
-     * @return Ponteiro para a Page alocada; nullptr se não for possível
-     *         alocar (falta de memória ou esgotamento de ids).
+     * Aloca uma Page nova e vazia diretamente no PageBuffer (já inicializada
+     * com seu pageId e marcada como suja). Reaproveita o id de uma Page
+     * previamente liberada, se houver.
+     *
+     * A Page retornada permanece pinada; o chamador deve liberá-la com
+     * PageBuffer::unpin() quando terminar de utilizá-la.
+     *
+     * @return Ponteiro para a Page; nullptr se não for possível alocar
+     *         (falta de memória, esgotamento de ids, ou nenhum frame
+     *         disponível no buffer).
      */
     Page* allocatePage();
 
+    /** Obtém uma Page pelo identificador através do PageBuffer (retorna pinada). */
+    Page* getPage(std::uint32_t pageId);
+
     /**
-     * Libera a Page identificada por pageId e disponibiliza o id para reuso.
-     * @return true em caso de sucesso; false se o pageId não existir ou a
-     *         Page já estiver liberada.
+     * Devolve o pageId à free list. Se a Page ainda estiver no buffer, ela é
+     * descartada sem ser gravada em disco.
+     *
+     * @return true em caso de sucesso; false se o pageId não existir, a Page
+     *         já estiver liberada ou ainda estiver pinada.
      */
     bool freePage(std::uint32_t pageId);
 
 private:
-    /** Indexado por pageId. Entrada nula indica Page liberada. */
-    std::vector<std::unique_ptr<Page>> pages_;
+    PageBuffer& pageBuffer_;
+
+    /** Indexado por pageId. true = id alocado; false = id liberado. */
+    std::vector<bool> allocated_;
 
     /** Pilha de pageIds liberados, disponíveis para reaproveitamento. */
     std::vector<std::uint32_t> freePageIds_;

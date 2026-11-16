@@ -3,48 +3,68 @@
 #include <limits>
 #include <new>
 
+PageManager::PageManager(PageBuffer& pageBuffer) noexcept
+    : pageBuffer_(pageBuffer) {
+}
+
 Page* PageManager::allocatePage() {
     try {
         // Reaproveita um id liberado, se houver.
         if (!freePageIds_.empty()) {
             const std::uint32_t pageId = freePageIds_.back();
 
-            auto page = std::make_unique<Page>();
-            page->init(pageId);
+            Page* page = pageBuffer_.newPage(pageId);
+            if (page == nullptr) {
+                return nullptr; // o id continua na pilha
+            }
 
-            // Só consome o id da pilha depois que a alocação deu certo.
             freePageIds_.pop_back();
-            pages_[pageId] = std::move(page);
-            return pages_[pageId].get();
+            allocated_[pageId] = true;
+            return page;
         }
 
         // Sem ids livres: cria um novo id sequencial.
-        if (pages_.size() > std::numeric_limits<std::uint32_t>::max()) {
+        if (allocated_.size() > std::numeric_limits<std::uint32_t>::max()) {
             return nullptr; // ids esgotados
         }
-        const auto pageId = static_cast<std::uint32_t>(pages_.size());
+        const auto pageId = static_cast<std::uint32_t>(allocated_.size());
 
-        auto page = std::make_unique<Page>();
-        page->init(pageId);
+        allocated_.push_back(false); // reserva o slot antes de tocar no buffer
+        Page* page = pageBuffer_.newPage(pageId);
+        if (page == nullptr) {
+            allocated_.pop_back();   // desfaz a reserva
+            return nullptr;
+        }
 
-        pages_.push_back(std::move(page));
-        return pages_.back().get();
+        allocated_[pageId] = true;
+        return page;
     } catch (const std::bad_alloc&) {
         return nullptr;
     }
 }
 
+Page* PageManager::getPage(std::uint32_t pageId) {
+    return pageBuffer_.fetch(pageId);
+}
+
 bool PageManager::freePage(std::uint32_t pageId) {
-    if (pageId >= pages_.size() || !pages_[pageId]) {
+    if (pageId >= allocated_.size() || !allocated_[pageId]) {
         return false; // id inexistente ou Page já liberada
     }
 
+    // Reserva espaço antes de descartar: o push_back abaixo não pode falhar,
+    // então nunca perdemos a Page do buffer sem registrar o id como livre.
     try {
-        freePageIds_.push_back(pageId);
+        freePageIds_.reserve(freePageIds_.size() + 1);
     } catch (const std::bad_alloc&) {
-        return false; // Page preservada, estado consistente
+        return false;
     }
 
-    pages_[pageId].reset();
+    if (!pageBuffer_.discard(pageId)) {
+        return false; // Page ainda pinada: continua alocada
+    }
+
+    freePageIds_.push_back(pageId);
+    allocated_[pageId] = false;
     return true;
 }

@@ -2,9 +2,10 @@
 
 #include <iterator>
 #include <stdexcept>
+#include <new> /*std::bad_alloc*/
 
-PageBuffer::PageBuffer(std::size_t capacity, IPageStorage& storage)
-    : storage_(storage), frames_(capacity) {
+PageBuffer::PageBuffer(std::size_t capacity, DiskManager& diskManager)
+    : diskManager_(diskManager), frames_(capacity) {
     if (capacity == 0) {
         throw std::invalid_argument("PageBuffer: a capacidade deve ser maior que zero");
     }
@@ -29,7 +30,7 @@ Page* PageBuffer::fetch(std::uint32_t pageId) {
     }
 
     Frame& frame = frames_[frameIndex];
-    if (!storage_.readPage(pageId, frame.page)) {
+    if (!diskManager_.readPage(pageId, frame.page)) {
         freeFrames_.push_back(frameIndex);
         return nullptr;
     }
@@ -71,10 +72,58 @@ bool PageBuffer::unpin(std::uint32_t pageId, bool isDirty) {
 
     --frame.pinCount;
     if (frame.pinCount == 0) {
-        // Mais recentemente usada fica no fim; a menos recente, na frente.
+        // A Page mais recentemente usada fica no fim da lista LRU.
         lruList_.push_back(frameIndex);
         frame.lruPosition = std::prev(lruList_.end());
     }
+    return true;
+}
+
+Page* PageBuffer::newPage(std::uint32_t pageId) {
+    // Um id ainda presente no buffer está em uso; não pode ser recriado.
+    if (pageTable_.find(pageId) != pageTable_.end()) {
+        return nullptr;
+    }
+
+    const std::size_t frameIndex = acquireFrame();
+    if (frameIndex == NO_FRAME) {
+        return nullptr;
+    }
+
+    try {
+        pageTable_.emplace(pageId, frameIndex);
+    } catch (const std::bad_alloc&) {
+        freeFrames_.push_back(frameIndex); // capacidade já reservada no construtor
+        return nullptr;
+    }
+
+    Frame& frame = frames_[frameIndex];
+    frame.page.init(pageId);
+    frame.pageId   = pageId;
+    frame.pinCount = 1;
+    frame.dirty    = true;   // não existe no disco ainda
+    frame.inUse    = true;
+
+    return &frame.page;
+}
+
+bool PageBuffer::discard(std::uint32_t pageId) {
+    const auto found = pageTable_.find(pageId);
+    if (found == pageTable_.end()) {
+        return true; // nada a descartar
+    }
+
+    const std::size_t frameIndex = found->second;
+    Frame& frame = frames_[frameIndex];
+    if (frame.pinCount > 0) {
+        return false; // em uso: não pode ser descartada
+    }
+
+    lruList_.erase(frame.lruPosition);
+    pageTable_.erase(found);
+    frame.inUse = false;
+    frame.dirty = false;    // descarta sem gravar
+    freeFrames_.push_back(frameIndex);
     return true;
 }
 
@@ -91,7 +140,7 @@ std::size_t PageBuffer::acquireFrame() {
 
     const std::size_t victim = lruList_.front();
     if (!evictFrame(victim)) {
-        return NO_FRAME; // falha ao gravar a Page suja: ela permanece no buffer
+        return NO_FRAME; // a Page suja permanece no buffer se a gravação falhar
     }
     return victim;
 }
@@ -99,7 +148,8 @@ std::size_t PageBuffer::acquireFrame() {
 bool PageBuffer::evictFrame(std::size_t frameIndex) {
     Frame& frame = frames_[frameIndex];
 
-    if (frame.dirty && !storage_.writePage(frame.pageId, frame.page)) {
+    // DiskManager obtém o pageId diretamente da Page.
+    if (frame.dirty && !diskManager_.writePage(frame.page)) {
         return false;
     }
 
