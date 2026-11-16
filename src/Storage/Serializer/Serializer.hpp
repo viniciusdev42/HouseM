@@ -33,14 +33,16 @@
 class Serializer {
 public:
   
-  static bool serialize(const BTreeNode& node, const std::vector<std::uint32_t>& childPageIds,
+    bool serialize(const BTreeNode& node, const std::vector<std::uint32_t>& childPageIds,
                       Page& page,std::uint16_t& slotId); 
         
 
-  static std::optional<BTreeNode> deserialize(const Page& page,std::uint16_t slotId,
+    std::optional<BTreeNode> deserialize(const Page& page,std::uint16_t slotId,
                                               std::vector<std::uint32_t>& childPageIds);
  
 private:
     Serializer() = delete;
+
+};
 
 #endif // SERIALIZER_HPP

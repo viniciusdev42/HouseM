@@ -66,7 +66,7 @@ namespace {
      * @throws std::invalid_argument se childPageIds.size() != node.childCount().
      */
 
- static bool serialize(const BTreeNode& node, const std::vector<std::uint32_t>& childPageIds,
+ Serializer::bool serialize(const BTreeNode& node, const std::vector<std::uint32_t>& childPageIds,
                             Page& page,std::uint16_t& slotId) {
               
   static_assert(std::is_integral<BTreeNode::Key>::value &&
@@ -117,7 +117,7 @@ namespace {
      *         ou se o conteúdo do registro estiver corrompido.
      */
 
-   static std::optional<BTreeNode> deserialize(const Page& page,std::uint16_t slotId,
+   Serializer::std::optional<BTreeNode> deserialize(const Page& page,std::uint16_t slotId,
                                               std::vector<std::uint32_t>& childPageIds) {
      childPageIds.clear();
 
