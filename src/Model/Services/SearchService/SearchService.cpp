@@ -108,6 +108,17 @@ std::vector<std::string> extractIndexWords(const Task& task) {
     return words;
 }
 
+// Único ponto que conhece a conversão std::string -> LevenView.
+LevenView toLevenView(const std::string& text) {
+    return LevenView(text.data(), text.size());
+}
+
+struct Candidate {
+    std::string word;
+    std::size_t distance;
+    bool isCompletion;
+};
+
 }  // namespace
 
 int compareIgnoreCase(const std::string& a, const std::string& b) {
@@ -256,6 +267,67 @@ std::vector<std::string> SearchService::autocomplete(const std::string& prefix,
                                                      std::size_t maxResults) const {
     requireNonEmptyTerm(prefix, "autocomplete");
     return index_.autocomplete(toLower(prefix), maxResults);
+}
+
+std::vector<std::string> SearchService::suggest(const std::string& term,
+                                                std::size_t maxResults,
+                                                double minSimilarity) const {
+    requireNonEmptyTerm(term, "suggest");
+    if (minSimilarity < 0.0 || minSimilarity > 1.0) {
+        throw std::invalid_argument(
+            "SearchService::suggest: minSimilarity must be in [0, 1]");
+    }
+
+    const std::string lowerTerm = toLower(term);
+    const LevenView termView = toLevenView(lowerTerm);
+
+    std::vector<Candidate> candidates;
+    for (std::string& word : index_.autocomplete("")) {
+        if (word == lowerTerm) {
+            continue;  // não sugere o que o usuário já digitou
+        }
+
+        const bool isCompletion =
+            word.size() > lowerTerm.size() &&
+            word.compare(0, lowerTerm.size(), lowerTerm) == 0;
+
+        // Poda barata: a diferença de tamanho é um limite inferior da
+        // distância, então evita montar a matriz quando já não há chance.
+        const std::size_t maxLen = std::max(word.size(), lowerTerm.size());
+        const std::size_t lenDiff = word.size() > lowerTerm.size()
+                                        ? word.size() - lowerTerm.size()
+                                        : lowerTerm.size() - word.size();
+        if (!isCompletion &&
+            1.0 - static_cast<double>(lenDiff) / static_cast<double>(maxLen) < minSimilarity) {
+            continue;
+        }
+
+        const LevenView wordView = toLevenView(word);
+        const std::size_t distance = Levenshtein::levenshtein_distance(termView, wordView);
+        const double similarity = Levenshtein::levenshtein_similarity(termView, wordView);
+
+        if (isCompletion || similarity >= minSimilarity) {
+            candidates.push_back({std::move(word), distance, isCompletion});
+        }
+    }
+
+    std::sort(candidates.begin(), candidates.end(),
+              [](const Candidate& a, const Candidate& b) {
+                  if (a.isCompletion != b.isCompletion) return a.isCompletion;
+                  if (a.distance != b.distance) return a.distance < b.distance;
+                  return a.word < b.word;
+              });
+
+    if (maxResults > 0 && candidates.size() > maxResults) {
+        candidates.resize(maxResults);
+    }
+
+    std::vector<std::string> result;
+    result.reserve(candidates.size());
+    for (Candidate& candidate : candidates) {
+        result.push_back(std::move(candidate.word));
+    }
+    return result;
 }
 
 void SearchService::indexTask(const Task& task) {

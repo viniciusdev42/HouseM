@@ -10,6 +10,7 @@
 #include "src/Model/Structures/TRIE/TRIE.hpp"
 #include"src/Model/Structures/String/Algorithms/KMP/KMP.hpp"
 #include "src/Model/Structures/String/Algorithms/RabinKarp/RabinKarp.hpp"
+#include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
 
 namespace SearchService {
 
@@ -88,6 +89,19 @@ public:
 
     std::vector<std::string> autocomplete(const std::string& prefix,
                                           std::size_t maxResults = 0) const;
+
+    // Sugestões de pesquisa ("você quis dizer?"). Compara 'term' com o
+    // vocabulário indexado (palavras de títulos e descrições), sem distinguir
+    // maiúsculas de minúsculas. Candidatos aceitos:
+    //   - palavras que começam com 'term' (completamento), ou
+    //   - palavras com similaridade de Levenshtein >= minSimilarity.
+    // Ordem: completamentos primeiro; depois menor distância; depois ordem
+    // alfabética. maxResults == 0 significa sem limite (como em autocomplete).
+    // Lança std::invalid_argument se 'term' for vazio ou se minSimilarity
+    // estiver fora de [0, 1]. Nunca sugere o próprio termo.
+    std::vector<std::string> suggest(const std::string& term,
+                                     std::size_t maxResults = 5,
+                                     double minSimilarity = 0.5) const;
 
     void indexTask(const Task& task);
     void removeTaskFromIndex(const TaskId& id);
