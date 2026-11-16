@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "src/Storage/Page/Page.hpp"
 #include "src/Storage/DiskManager/DiskManager.hpp"
 
 /**
