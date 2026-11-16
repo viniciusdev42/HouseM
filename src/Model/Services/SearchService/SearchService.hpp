@@ -9,12 +9,19 @@
 #include "src/Model/Repositories/ITaskRepository.hpp"
 #include "src/Model/Structures/TRIE/TRIE.hpp"
 #include"src/Model/Structures/String/Algorithms/KMP/KMP.hpp"
+#include "src/Model/Structures/String/Algorithms/RabinKarp/RabinKarp.hpp"
 
 namespace SearchService {
 
 enum class SortField { Title, Priority, Status, Deadline };
 enum class SortOrder { Ascending, Descending };
 enum class SubstringScope { Title, Description, Both };
+
+// Como combinar vários padrões em searchByPatterns.
+enum class PatternMatchMode {
+    Any,  // a tarefa casa se QUALQUER padrão aparecer (OU)
+    All   // a tarefa casa somente se TODOS os padrões aparecerem (E)
+};
 
 struct SortSpec {
     SortField field = SortField::Title;
@@ -55,6 +62,22 @@ public:
     std::vector<Task> searchBySubstring(const std::string& term,
                                         SubstringScope scope = SubstringScope::Both,
                                         SortSpec spec = {}) const;
+
+      // Pesquisa textual por padrão (Rabin-Karp), sem distinguir maiúsculas de
+    // minúsculas. Lança std::invalid_argument se o padrão for vazio.
+    // O resultado é ordenado segundo 'spec' (padrão: título crescente).
+    std::vector<Task> searchByPattern(const std::string& pattern,
+                                      SubstringScope scope = SubstringScope::Both,
+                                      SortSpec spec = {}) const;
+
+    // Pesquisa por vários padrões (Rabin-Karp) combinados por 'mode'.
+    // Com SubstringScope::Both, cada padrão é procurado no título OU na
+    // descrição. Lança std::invalid_argument se a lista ou algum padrão
+    // for vazio.
+    std::vector<Task> searchByPatterns(const std::vector<std::string>& patterns,
+                                       PatternMatchMode mode = PatternMatchMode::Any,
+                                       SubstringScope scope = SubstringScope::Both,
+                                       SortSpec spec = {}) const;
 
     // Todas as tarefas, ordenadas segundo 'spec'.
     std::vector<Task> searchAll(SortSpec spec = {}) const;

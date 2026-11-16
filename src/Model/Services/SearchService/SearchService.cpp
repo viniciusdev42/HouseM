@@ -31,6 +31,33 @@ bool kmpContainsIgnoreCase(const std::string& text, const std::string& lowerTerm
     return KMP::search(toView(lowerText), toView(lowerTerm)).size() > 0;
 }
 
+// Ambos os argumentos já devem estar em minúsculas (o chamador lowercasa uma
+// única vez por tarefa, e não uma vez por padrão).
+bool rabinKarpContains(const std::string& lowerText, const std::string& lowerPattern) {
+    // Atalho barato; também evita depender de como o Rabin-Karp trata
+    // padrões maiores que o texto.
+    if (lowerPattern.size() > lowerText.size()) {
+        return false;
+    }
+    return RabinKarp::find_first(toKarpView(lowerText), toKarpView(lowerPattern)).has_value();
+}
+
+bool matchesPatterns(const Task& task, const std::vector<std::string>& lowerPatterns,
+                     PatternMatchMode mode, bool inTitle, bool inDescription) {
+    const std::string title = inTitle ? toLower(task.title()) : std::string();
+    const std::string description = inDescription ? toLower(task.description()) : std::string();
+
+    const auto matches = [&](const std::string& pattern) {
+        return (inTitle && rabinKarpContains(title, pattern)) ||
+               (inDescription && rabinKarpContains(description, pattern));
+    };
+
+    return mode == PatternMatchMode::All
+               ? std::all_of(lowerPatterns.begin(), lowerPatterns.end(), matches)
+               : std::any_of(lowerPatterns.begin(), lowerPatterns.end(), matches);
+}
+
+
 void requireNonEmptyTerm(const std::string& term, const char* operation) {
     if (term.empty()) {
         throw std::invalid_argument(std::string("SearchService::") + operation +
@@ -154,6 +181,41 @@ std::vector<Task> SearchService::searchBySubstring(const std::string& term,
 
     // Só reordena se o chamador pediu uma ordenação explícita
     // (o SortSpec padrão é Title/Ascending, então comparamos com o padrão).
+    sortTasks(result, spec);
+    return result;
+}
+
+std::vector<Task> SearchService::searchByPattern(const std::string& pattern,
+                                                 SubstringScope scope,
+                                                 SortSpec spec) const {
+    requireNonEmptyTerm(pattern, "searchByPattern");
+    return searchByPatterns({pattern}, PatternMatchMode::Any, scope, spec);
+}
+
+std::vector<Task> SearchService::searchByPatterns(const std::vector<std::string>& patterns,
+                                                  PatternMatchMode mode,
+                                                  SubstringScope scope,
+                                                  SortSpec spec) const {
+    if (patterns.empty()) {
+        throw std::invalid_argument(
+            "SearchService::searchByPatterns: at least one pattern is required");
+    }
+
+    std::vector<std::string> lowerPatterns;
+    lowerPatterns.reserve(patterns.size());
+    for (const std::string& pattern : patterns) {
+        requireNonEmptyTerm(pattern, "searchByPatterns");
+        lowerPatterns.push_back(toLower(pattern));
+    }
+
+    const bool inTitle = scope != SubstringScope::Description;
+    const bool inDescription = scope != SubstringScope::Title;
+
+    std::vector<Task> result = filterTasks(
+        repository_, [&lowerPatterns, mode, inTitle, inDescription](const Task& task) {
+            return matchesPatterns(task, lowerPatterns, mode, inTitle, inDescription);
+        });
+
     sortTasks(result, spec);
     return result;
 }
