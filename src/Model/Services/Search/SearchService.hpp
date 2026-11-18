@@ -2,16 +2,19 @@
 #define SEARCH_SERVICE_HPP
 
 #include <cstddef>
+#include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "src/Model/Repositories/ITaskRepository.hpp"
 #include "src/Model/Structures/Trie/Trie.hpp"
-#include"src/Model/Structures/String/Algorithms/Kmp/Kmp.hpp"
+#include "src/Model/Structures/String/Algorithms/Kmp/Kmp.hpp"
 #include "src/Model/Structures/String/Algorithms/Karp/RabinKarp.hpp"
 #include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
 #include "src/Model/Structures/String/Normalization/Normalizer.hpp"
+#include "src/Model/Structures/String/Tokenizer/Tokenizer.hpp"
 
 namespace SearchService {
 
@@ -19,10 +22,10 @@ enum class SortField { Title, Priority, Status, Deadline };
 enum class SortOrder { Ascending, Descending };
 enum class SubstringScope { Title, Description, Both };
 
-// Como combinar vários padrões em searchByPatterns.
+// Como combinar vários padrões/termos nas buscas multi-termo.
 enum class PatternMatchMode {
-    Any,  // a tarefa casa se QUALQUER padrão aparecer (OU)
-    All   // a tarefa casa somente se TODOS os padrões aparecerem (E)
+    Any,  // a tarefa casa se QUALQUER padrão/termo aparecer (OU)
+    All   // a tarefa casa somente se TODOS os padrões/termos aparecerem (E)
 };
 
 struct SortSpec {
@@ -33,7 +36,7 @@ struct SortSpec {
 class SearchService {
 public:
     using Repository = ITaskRepository::ITaskRepository;
-    using TextNormalizer = Normalizer::Normalizer
+    using TextNormalizer = Normalizer::Normalizer;
     using TimePoint = Repository::TimePoint;
 
     explicit SearchService(const Repository& repository, const TextNormalizer& normalizer);
@@ -59,14 +62,14 @@ public:
         const std::string& from, const std::string& to,
         SortSpec spec = {SortField::Title, SortOrder::Ascending}) const;
 
-     // Pesquisa por substring (KMP), sem distinguir maiúsculas de minúsculas.
+    // Pesquisa por substring (KMP), sem distinguir maiúsculas de minúsculas.
     // Com SubstringScope::Both, a tarefa casa se o termo aparecer no título
-    // OU na descrição. Por padrão, mantém a ordem retornada pelo repositório.
+    // OU na descrição. O resultado é ordenado segundo 'spec'.
     std::vector<Task> searchBySubstring(const std::string& term,
                                         SubstringScope scope = SubstringScope::Both,
                                         SortSpec spec = {}) const;
 
-      // Pesquisa textual por padrão (Rabin-Karp), sem distinguir maiúsculas de
+    // Pesquisa textual por padrão (Rabin-Karp), sem distinguir maiúsculas de
     // minúsculas. Lança std::invalid_argument se o padrão for vazio.
     // O resultado é ordenado segundo 'spec' (padrão: título crescente).
     std::vector<Task> searchByPattern(const std::string& pattern,
@@ -82,6 +85,24 @@ public:
                                        SubstringScope scope = SubstringScope::Both,
                                        SortSpec spec = {}) const;
 
+    // Pesquisa por termos usando o índice invertido. Fluxo: normaliza a
+    // consulta -> Tokenizer separa em tokens -> cada token é procurado
+    // (igualdade exata) nas listas de ocorrências. Título e descrição são
+    // indexados juntos. 'mode' combina os tokens (padrão: All, ou seja, a
+    // tarefa precisa conter todos). Lança std::invalid_argument se a consulta
+    // for vazia ou não tiver conteúdo pesquisável.
+    std::vector<Task> searchByTerms(const std::string& query,
+                                    PatternMatchMode mode = PatternMatchMode::All,
+                                    SortSpec spec = {}) const;
+
+    // Igual a searchByTerms, mas cada token da consulta é tratado como
+    // PREFIXO: a Trie expande o prefixo nos tokens indexados que o começam,
+    // e a união das listas de ocorrências desses tokens é o conjunto do
+    // prefixo. Ex.: "reun jo" (All) encontra "reunião com João".
+    std::vector<Task> searchByPrefix(const std::string& query,
+                                     PatternMatchMode mode = PatternMatchMode::All,
+                                     SortSpec spec = {}) const;
+
     // Todas as tarefas, ordenadas segundo 'spec'.
     std::vector<Task> searchAll(SortSpec spec = {}) const;
 
@@ -89,18 +110,24 @@ public:
     // tarefas sem prazo ficam sempre no final, em ambas as ordens.
     static void sortTasks(std::vector<Task>& tasks, SortSpec spec);
 
+    // Autocompletar. O texto é normalizado e tokenizado; o ÚLTIMO token é o
+    // prefixo consultado na Trie (ex.: "reunião com jo" completa "jo").
+    // Se o texto termina em espaço, não há palavra em digitação e o
+    // resultado é vazio. Lança std::invalid_argument se o texto for vazio ou
+    // não tiver conteúdo pesquisável. maxResults == 0 significa sem limite.
     std::vector<std::string> autocomplete(const std::string& prefix,
                                           std::size_t maxResults = 0) const;
 
-    // Sugestões de pesquisa ("você quis dizer?"). Compara 'term' com o
-    // vocabulário indexado (palavras de títulos e descrições), sem distinguir
-    // maiúsculas de minúsculas. Candidatos aceitos:
-    //   - palavras que começam com 'term' (completamento), ou
+    // Sugestões de pesquisa ("você quis dizer?"). Normaliza e tokeniza
+    // 'term' (usa o último token) e o compara com o vocabulário indexado
+    // (tokens de títulos e descrições). Candidatos aceitos:
+    //   - palavras que começam com o termo (completamento), ou
     //   - palavras com similaridade de Levenshtein >= minSimilarity.
     // Ordem: completamentos primeiro; depois menor distância; depois ordem
     // alfabética. maxResults == 0 significa sem limite (como em autocomplete).
-    // Lança std::invalid_argument se 'term' for vazio ou se minSimilarity
-    // estiver fora de [0, 1]. Nunca sugere o próprio termo.
+    // Lança std::invalid_argument se 'term' for vazio, não tiver conteúdo
+    // pesquisável ou se minSimilarity estiver fora de [0, 1]. Nunca sugere o
+    // próprio termo.
     std::vector<std::string> suggest(const std::string& term,
                                      std::size_t maxResults = 5,
                                      double minSimilarity = 0.5) const;
@@ -110,6 +137,9 @@ public:
     void rebuildIndex();
 
 private:
+    // Conjunto ordenado de ids (exige operator< em TaskId).
+    using IdSet = std::set<TaskId>;
+
     // Aplica normalizer_.normalize() e devolve o resultado como std::string.
     std::string normalize(const std::string& text) const;
 
@@ -117,11 +147,34 @@ private:
     // de busca. 'operation' só alimenta a mensagem de erro.
     std::string normalizeTerm(const std::string& term, const char* operation) const;
 
+    // normalize() seguido de Tokenizer. Pode devolver lista vazia.
+    std::vector<std::string> tokenize(const std::string& text) const;
+
+    // Valida e tokeniza uma consulta; devolve tokens sem repetição.
+    std::vector<std::string> queryTokens(const std::string& query, const char* operation) const;
+
+    // Último token da consulta (a palavra "em digitação").
+    std::string activeToken(const std::string& text, const char* operation) const;
+
+    // Palavras a indexar de uma tarefa: tokens (normalizados) de título e
+    // descrição, mais as partes de tokens compostos ("guarda-chuva" ->
+    // "guarda-chuva", "guarda", "chuva"). Sem repetições.
     std::vector<std::string> extractIndexWords(const Task& task) const;
+
+    // Índice invertido: token -> ids das tarefas que o contêm.
+    IdSet idsForToken(const std::string& token) const;
+    // Consulta a Trie pelo prefixo e une as ocorrências de todos os tokens.
+    IdSet idsForPrefix(const std::string& prefix) const;
+    std::vector<Task> tasksWithIds(const IdSet& ids, SortSpec spec) const;
+
+    void addToPostings(const TaskId& id, const std::vector<std::string>& words);
+    void removeFromPostings(const TaskId& id);
 
     const Repository& repository_;
     const TextNormalizer& normalizer_;
-    Trie index_;
+    ::Tokenizer::Tokenizer tokenizer_;
+    Trie index_;                              // vocabulário (autocomplete/suggest)
+    std::map<std::string, IdSet> postings_;   // token -> tarefas (índice invertido)
 };
 
 }  // namespace SearchService
