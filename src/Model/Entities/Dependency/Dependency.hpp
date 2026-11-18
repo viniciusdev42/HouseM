@@ -36,8 +36,7 @@ namespace Dependency {
 /// Violações lançam std::invalid_argument.
 class Dependency {
 public:
-
-    using TaskId = Task::TaskId
+    using TaskId = ::Task::TaskId;
 
     /// Cria uma dependência: `dependentId` depende de `prerequisiteId`.
     /// @throws std::invalid_argument se algum ID for inválido ou se

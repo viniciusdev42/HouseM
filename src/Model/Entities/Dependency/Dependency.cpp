@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 namespace Dependency {
+ using TaskId = ::Task::TaskId;
 
 namespace {
 
@@ -15,10 +16,10 @@ std::size_t combineHash(std::size_t seed, std::size_t value) noexcept {
 
 /// Valida o par de IDs, lançando std::invalid_argument se violar as invariantes.
 void validatePair(TaskId prerequisiteId, TaskId dependentId) {
-    if (prerequisiteId == Task::kInvalidId) {
+    if (prerequisiteId == TaskId::kInvalidId) {
         throw std::invalid_argument("O ID da tarefa pre-requisito deve ser diferente de zero.");
     }
-    if (dependentId == Task::kInvalidId) {
+    if (dependentId == TaskId::kInvalidId) {
         throw std::invalid_argument("O ID da tarefa dependente deve ser diferente de zero.");
     }
     if (prerequisiteId == dependentId) {
@@ -34,14 +35,14 @@ Dependency::Dependency(TaskId prerequisiteId, TaskId dependentId)
 }
 
 bool Dependency::isValidPair(TaskId prerequisiteId, TaskId dependentId) noexcept {
-    return prerequisiteId != Task::kInvalidId &&
-           dependentId != Task::kInvalidId &&
+    return prerequisiteId != TaskId::kInvalidId &&
+           dependentId != TaskId::kInvalidId &&
            prerequisiteId != dependentId;
 }
 
 std::size_t Dependency::hashValue() const noexcept {
-    const std::size_t seed = std::hash<std::string>{}(id.value()){}(prerequisiteId_);
-    return combineHash(seed, std::hash<std::string>{}(id.value()){}(dependentId_));
+    const std::size_t seed = std::hash<std::string>{}(prerequisiteId_.value());
+    return combineHash(seed,std::hash<std::string>{}(dependentId_.value()));
 }
 
 std::string Dependency::toString() const {

@@ -15,6 +15,10 @@
 #include "src/Model/Entities/Task/Task.hpp"
 
 namespace ITaskRepository {
+using Task = ::Task::Task;
+using TaskId = ::Task::TaskId;
+using Status = ::Task::Status;
+using Priority = ::Task::Priority;
 
 // ---------------------------------------------------------------------------
 // Erros do repositório

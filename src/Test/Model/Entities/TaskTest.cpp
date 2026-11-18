@@ -2,7 +2,7 @@
 // Compilar: g++ -std=c++17 -Wall -Wextra Task.cpp Task_tests.cpp -o task_tests
 // Executar: ./task_tests  (retorna 0 se tudo passar)
 
-#include "Task.hpp"
+#include "src/Model/Entities/Task/Task.hpp"
 
 #include <iostream>
 #include <stdexcept>

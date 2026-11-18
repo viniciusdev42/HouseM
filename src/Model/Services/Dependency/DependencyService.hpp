@@ -50,7 +50,7 @@ namespace Dependency {
 */
 class DependencyService {
 public:
-    using TaskId = Task::TaskId;
+    using TaskId = ::Task::TaskId;
     using TaskRepository = ITaskRepository::ITaskRepository;
 
     /// O repositório deve sobreviver ao serviço.
