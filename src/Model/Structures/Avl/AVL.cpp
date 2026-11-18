@@ -1,4 +1,4 @@
-#include "AVL.hpp"
+#include "Avl.hpp"
 
 #include <algorithm>
 #include <stdexcept>

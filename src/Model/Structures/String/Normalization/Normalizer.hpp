@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "src/Model/Structures/String/Core/StringBuffer/StringBuffer.hpp"
-#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
+#include "src/Model/Structures/String/Core/Buffer/StringBuffer.hpp"
+#include "src/Model/Structures/String/Core/View/StringView.hpp"
 
 using NormalizerView = StringView::StringView;
 using NormalizerBuffer = StringBuffer::StringBuffer;

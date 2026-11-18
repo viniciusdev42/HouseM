@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "src/Model/Repositories/ITaskRepository.hpp"
-#include "src/Model/Structures/TRIE/TRIE.hpp"
-#include"src/Model/Structures/String/Algorithms/KMP/KMP.hpp"
-#include "src/Model/Structures/String/Algorithms/RabinKarp/RabinKarp.hpp"
+#include "src/Model/Structures/Trie/Trie.hpp"
+#include"src/Model/Structures/String/Algorithms/Kmp/Kmp.hpp"
+#include "src/Model/Structures/String/Algorithms/Karp/RabinKarp.hpp"
 #include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
 #include "src/Model/Structures/String/Normalization/Normalizer.hpp"
 

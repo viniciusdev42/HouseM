@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <optional>
 
-#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
-#include "src/Model/Structures/String/Core/DynamicArray/DynamicArray.hpp"
+#include "src/Model/Structures/String/Core/View/StringView.hpp"
+#include "src/Model/Structures/String/Core/Array/DynamicArray.hpp"
 
 using KarpView = StringView::StringView;
 using KarpArray = DynamicArray::IndexArray;

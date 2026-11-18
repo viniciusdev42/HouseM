@@ -20,7 +20,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "src/Model/Structures/String/Core/StringView/StringView.hpp"
+#include "src/Model/Structures/String/Core/View/StringView.hpp"
 
 using SuffixView = StringView::StringView;
 

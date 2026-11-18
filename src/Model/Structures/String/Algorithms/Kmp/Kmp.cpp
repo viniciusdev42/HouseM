@@ -1,12 +1,12 @@
-#include "KMP.hpp"
+#include "Kmp.hpp"
 
-using KV = KView;
-using DK = DynamicK;
+using Kv = KView;
+using Dk = DynamicK;
 
-namespace KMP {
+namespace Kmp {
 
-DK computeLPS(KV pattern) {
-    DK lps(pattern.size(), 0);
+Dk computeLPS(Kv pattern) {
+    Dk lps(pattern.size(), 0);
 
     if (pattern.empty()) {
         return lps;
@@ -28,14 +28,14 @@ DK computeLPS(KV pattern) {
     return lps;
 }
 
-DK search(KV text, KV pattern) {
-    DK occurrences;
+Dk search(Kv text, Kv pattern) {
+    Dk occurrences;
 
     if (text.empty() || pattern.empty() || pattern.size() > text.size()) {
         return occurrences;
     }
 
-   DK lps = computeLPS(pattern);
+   Dk lps = computeLPS(pattern);
 
     std::size_t matched = 0;
     for (std::size_t i = 0; i < text.size(); ++i) {
@@ -56,4 +56,4 @@ DK search(KV text, KV pattern) {
     return occurrences;
 }
 
-} // namespace KMP
+} // namespace Kmp
