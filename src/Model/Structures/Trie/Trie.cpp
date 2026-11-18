@@ -1,4 +1,4 @@
-#include "TRIE.hpp"
+#include "Trie.hpp"
 
 #include <algorithm>
 #include <stdexcept>

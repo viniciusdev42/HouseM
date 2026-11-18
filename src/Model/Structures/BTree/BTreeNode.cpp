@@ -3,42 +3,12 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace {
-
-void checkIndex(std::size_t index, std::size_t limit, const char* what) {
-    if (index >= limit) {
-        throw std::out_of_range(std::string("BTreeNode: indice de ") + what +
-                                " fora do intervalo (" + std::to_string(index) +
-                                " >= " + std::to_string(limit) + ")");
-    }
-}
-
-bool fail(std::string* error, const std::string& message) {
-    if (error != nullptr) {
-        *error = message;
-    }
-    return false;
-}
-
-} // namespace
-
 BTreeNode::BTreeNode(std::size_t minDegree, bool leaf)
     : minDegree_(minDegree), leaf_(leaf) {
     if (minDegree < 2) {
         throw std::invalid_argument("BTreeNode: o grau minimo deve ser >= 2");
     }
     // Evita realocações: o nó nunca excede essas capacidades.
-    keys_.reserve(maxKeys());
-    if (!leaf_) {
-        children_.reserve(maxChildren());
-    }
-}
-
-BTreeNode::BTreeNode(std::size_t minDegree, bool leaf)
-    : minDegree_(minDegree), leaf_(leaf) {
-    if (minDegree < 2) {
-        throw std::invalid_argument("BTreeNode: o grau minimo deve ser >= 2");
-    }
     keys_.reserve(maxKeys());
     if (!leaf_) {
         children_.reserve(maxChildren());

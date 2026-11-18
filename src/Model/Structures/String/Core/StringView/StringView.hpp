@@ -57,10 +57,6 @@ public:
     /// parte da view). Um ponteiro nulo resulta em view vazia.
     StringView(const char* cString) noexcept;
 
-    /// View sobre o conteúdo de uma std::string (não estende seu tempo de vida).
-    StringView(const std::string& str) noexcept;
-
-
     // ------------------------------------------------------------------
     // Capacidade
     // ------------------------------------------------------------------
@@ -123,7 +119,7 @@ public:
     /// Primeira ocorrência de `ch` a partir de `pos`, ou npos.
     size_type find(char ch, size_type pos = 0) const noexcept;
 
-    ------------------------------------------------------------------
+    // ------------------------------------------------------------------
     // Comparação
     // ------------------------------------------------------------------
 

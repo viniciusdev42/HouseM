@@ -40,12 +40,12 @@ bool Dependency::isValidPair(TaskId prerequisiteId, TaskId dependentId) noexcept
 }
 
 std::size_t Dependency::hashValue() const noexcept {
-    const std::size_t seed = std::hash<TaskId>{}(prerequisiteId_);
-    return combineHash(seed, std::hash<TaskId>{}(dependentId_));
+    const std::size_t seed = std::hash<std::string>{}(id.value()){}(prerequisiteId_);
+    return combineHash(seed, std::hash<std::string>{}(id.value()){}(dependentId_));
 }
 
 std::string Dependency::toString() const {
-    return std::to_string(prerequisiteId_) + " -> " + std::to_string(dependentId_);
+    return prerequisiteId_.value() + " -> " + dependentId_.value();
 }
 
 }  // namespace Dependency

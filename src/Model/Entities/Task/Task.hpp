@@ -22,6 +22,14 @@ public:
 
     const std::string& value() const noexcept { return value_; }
 
+    // Regra/Constante para representar um ID inválido
+    inline static const TaskId kInvalidId{""}; // String vazia
+
+    // Método auxiliar opcional para checar validade
+    bool is_valid() const noexcept {
+        return *this != kInvalidId;
+    }
+
     friend bool operator==(const TaskId& lhs, const TaskId& rhs) noexcept { return lhs.value_ == rhs.value_; }
     friend bool operator!=(const TaskId& lhs, const TaskId& rhs) noexcept { return !(lhs == rhs); }
     friend bool operator<(const TaskId& lhs, const TaskId& rhs) noexcept { return lhs.value_ < rhs.value_; }

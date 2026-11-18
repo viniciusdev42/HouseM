@@ -39,11 +39,11 @@ Task::Task(TaskId id,
       updatedAt_(createdAt),
       completedAt_(std::nullopt) {}
 
-Task Task::create(std::string title,
+Task Task::create(TaskId id,
+                  std::string title,
                   std::string description,
                   Priority priority,
-                  std::optional<TimePoint> deadline,
-                  TaskId id,
+                  std::optional<TimePoint> deadline,                  
                   TimePoint now) {
     validateTitle(title);
     validateDeadline(deadline, now);
