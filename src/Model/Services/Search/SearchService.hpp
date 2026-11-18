@@ -14,7 +14,7 @@
 #include "src/Model/Structures/String/Algorithms/Karp/RabinKarp.hpp"
 #include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
 #include "src/Model/Structures/String/Normalization/Normalizer.hpp"
-#include "src/Model/Structures/String/Tokenizer/Tokenizer.hpp"
+#include "src/Model/Structures/String/Tokenization/Tokenizer.hpp"
 
 namespace SearchService {
 
