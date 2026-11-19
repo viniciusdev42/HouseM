@@ -11,7 +11,7 @@
 #include "src/Model/Entities/Dependency/Dependency.hpp"
 #include "src/Model/Structures/Graph/Graph.hpp"
 
-namespace Dependency {
+namespace DependencyService {
 
 /* Serviço que gerencia as dependências entre tarefas.
 
@@ -51,7 +51,7 @@ namespace Dependency {
 class DependencyService {
 public:
     using TaskId = ::Task::TaskId;
-    using TaskRepository = ITaskRepository::ITaskRepository;
+    using TaskRepository = ::ITaskRepository::ITaskRepository;
 
     /// O repositório deve sobreviver ao serviço.
     explicit DependencyService(const TaskRepository& repository);
@@ -149,6 +149,6 @@ private:
     Vertex nextVertex_ = 0;  // nunca reutilizado, para não confundir vértices antigos com novos
 };
 
-}  // namespace Dependency
+}  // namespace DependencyService
 
 #endif  // DEPENDENCY_SERVICE_HPP

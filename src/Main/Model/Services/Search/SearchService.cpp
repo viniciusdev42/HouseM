@@ -157,7 +157,7 @@ IdSet combineIds(const std::vector<IdSet>& sets, PatternMatchMode mode) {
 
 // Busca textual: o repositório não tem índice para texto, então varre findAll().
 template <typename Predicate>
-std::vector<Task> filterTasks(const SearchService::Repository& repository, Predicate predicate) {
+std::vector<Task> filterTasks(Repository& repository, Predicate predicate) {
     std::vector<Task> result;
     for (Task& task : repository.findAll()) {
         if (predicate(task)) {

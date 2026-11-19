@@ -2,7 +2,7 @@
 #define TRIE_HPP
 
 #include <cstddef>
-#include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -10,14 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-/**
- * Identificador de tarefa.
- *
- * Definido aqui para manter a Trie desacoplada de qualquer outro componente.
- * Pode ser trocado por qualquer tipo que seja comparável com == e possua
- * std::hash (ex.: std::string), sem alterar o restante da implementação.
- */
-using TaskId = std::uint64_t;
+#include "src/Model/Entities/Task/Task.hpp"
 
 /**
  * Trie (árvore de prefixos) que associa palavras a identificadores de tarefas.
@@ -36,6 +29,9 @@ using TaskId = std::uint64_t;
  *  - autocomplete: O(L + K), onde K é o número de nós visitados na subárvore
  *
  * Observações:
+ *  - Os ids são do tipo Task::TaskId (Value Object definido em Task.hpp). Como ele
+ *    não possui std::hash, a Trie usa um hasher próprio (TaskIdHash) sobre value().
+ *    Comparar/hashear um id custa O(|id|).
  *  - A comparação é feita byte a byte (case-sensitive).
  *  - Os filhos ficam em std::map para que o autocomplete retorne os resultados
  *    em ordem lexicográfica determinística.
@@ -57,14 +53,14 @@ public:
      * @return true se a associação era nova; false se já existia.
      * @throws std::invalid_argument se a palavra for vazia.
      */
-    bool insert(std::string_view word, TaskId taskId);
+    bool insert(std::string_view word, const Task::TaskId& taskId);
 
     /**
      * Remove a associação entre a palavra e o TaskId. Se a palavra ficar sem
      * nenhum TaskId, ela deixa de existir e os nós inúteis são podados.
      * @return true se a associação existia e foi removida.
      */
-    bool remove(std::string_view word, TaskId taskId);
+    bool remove(std::string_view word, const Task::TaskId& taskId);
 
     /**
      * Remove a palavra com todos os TaskIds associados a ela.
@@ -76,7 +72,7 @@ public:
      * Remove todas as associações de uma tarefa (uso: tarefa excluída).
      * @return true se a tarefa estava indexada.
      */
-    bool removeTask(TaskId taskId);
+    bool removeTask(const Task::TaskId& taskId);
 
     /**
      * Substitui o conjunto de palavras de uma tarefa (uso: tarefa editada).
@@ -84,7 +80,7 @@ public:
      * Uma lista vazia equivale a removeTask(taskId).
      * @throws std::invalid_argument se alguma palavra for vazia (nada é alterado).
      */
-    void updateTask(TaskId taskId, const std::vector<std::string>& newWords);
+    void updateTask(const Task::TaskId& taskId, const std::vector<std::string>& newWords);
 
     /** Retorna true se a palavra exata está armazenada. */
     bool search(std::string_view word) const;
@@ -96,10 +92,10 @@ public:
     bool startsWith(std::string_view prefix) const;
 
     /** Retorna os TaskIds associados à palavra (vazio se ela não existir). */
-    std::vector<TaskId> findTaskIds(std::string_view word) const;
+    std::vector<Task::TaskId> findTaskIds(std::string_view word) const;
 
     /** Retorna as palavras indexadas para a tarefa (vazio se ela não existir). */
-    std::vector<std::string> wordsOf(TaskId taskId) const;
+    std::vector<std::string> wordsOf(const Task::TaskId& taskId) const;
 
     /**
      * Retorna as palavras que começam com o prefixo, em ordem lexicográfica.
@@ -119,6 +115,13 @@ public:
     void clear();
 
 private:
+    /** Hasher para Task::TaskId, baseado na string interna do id. */
+    struct TaskIdHash {
+        std::size_t operator()(const Task::TaskId& id) const noexcept {
+            return std::hash<std::string>{}(id.value());
+        }
+    };
+
     struct Node {
         explicit Node(char c = '\0') : character(c) {}
 
@@ -128,7 +131,7 @@ private:
 
         char character;
         std::map<char, std::unique_ptr<Node>> children;
-        std::vector<TaskId> taskIds;
+        std::vector<Task::TaskId> taskIds;
     };
 
     /** Retorna o nó correspondente ao prefixo, ou nullptr se não existir. */
@@ -139,7 +142,7 @@ private:
     void pruneBranch(std::string_view word);
 
     /** Remove a palavra da lista do índice reverso da tarefa. */
-    void unlinkFromReverseIndex(TaskId taskId, std::string_view word);
+    void unlinkFromReverseIndex(const Task::TaskId& taskId, std::string_view word);
 
     /** Coleta, em DFS, as palavras da subárvore respeitando o limite. */
     void collectWords(const Node* node,
@@ -149,7 +152,7 @@ private:
 
     std::unique_ptr<Node> root_;
     std::size_t wordCount_ = 0;
-    std::unordered_map<TaskId, std::vector<std::string>> reverseIndex_;
+    std::unordered_map<Task::TaskId, std::vector<std::string>, TaskIdHash> reverseIndex_;
 };
 
 #endif // TRIE_HPP 

@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace Dependency {
+namespace DependencyService {
 
 DependencyService::DependencyService(const TaskRepository& repository)
     : repository_(repository), graph_(true) {}
@@ -272,4 +272,4 @@ std::vector<Task> DependencyService::collectUncompleted(const std::set<TaskId>& 
     return result;
 }
 
-}  // namespace Dependency
+}  // namespace DependencyService

@@ -23,7 +23,7 @@ public:
     const std::string& value() const noexcept { return value_; }
 
     // Regra/Constante para representar um ID inválido
-    static const TaskId kInvalidId{""}; // String vazia
+    inline static const TaskId kInvalidId {""}; // String vazia
 
     // Método auxiliar opcional para checar validade
     bool is_valid() const noexcept {

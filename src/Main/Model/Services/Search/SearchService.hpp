@@ -35,8 +35,10 @@ struct SortSpec {
 
 class SearchService {
 public:
-    using Repository = ITaskRepository::ITaskRepository;
-    using TextNormalizer = Normalizer::Normalizer;
+    using Task = ::Task::Task;
+    using TaskId = ::Task::TaskId;
+    using Repository = ::ITaskRepository::ITaskRepository;
+    using TextNormalizer = ::Normalizer::Normalizer;
     using TimePoint = Repository::TimePoint;
 
     explicit SearchService(const Repository& repository, const TextNormalizer& normalizer);

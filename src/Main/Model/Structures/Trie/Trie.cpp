@@ -21,7 +21,7 @@ bool eraseValue(std::vector<T>& values, const U& value) {
 
 Trie::Trie() : root_(std::make_unique<Node>()) {}
 
-bool Trie::insert(std::string_view word, TaskId taskId) {
+bool Trie::insert(std::string_view word, const Task::TaskId& taskId) {
     if (word.empty()) {
         throw std::invalid_argument("Trie::insert: a palavra não pode ser vazia.");
     }
@@ -48,7 +48,7 @@ bool Trie::insert(std::string_view word, TaskId taskId) {
     return true;
 }
 
-bool Trie::remove(std::string_view word, TaskId taskId) {
+bool Trie::remove(std::string_view word, const Task::TaskId& taskId) {
     if (word.empty()) {
         return false;
     }
@@ -77,7 +77,7 @@ bool Trie::removeWord(std::string_view word) {
         return false;
     }
 
-    for (TaskId taskId : node->taskIds) {
+    for (const Task::TaskId& taskId : node->taskIds) {
         unlinkFromReverseIndex(taskId, word);
     }
     node->taskIds.clear();
@@ -87,7 +87,7 @@ bool Trie::removeWord(std::string_view word) {
     return true;
 }
 
-bool Trie::removeTask(TaskId taskId) {
+bool Trie::removeTask(const Task::TaskId& taskId) {
     const auto it = reverseIndex_.find(taskId);
     if (it == reverseIndex_.end()) {
         return false;
@@ -113,7 +113,7 @@ bool Trie::removeTask(TaskId taskId) {
     return true;
 }
 
-void Trie::updateTask(TaskId taskId, const std::vector<std::string>& newWords) {
+void Trie::updateTask(const Task::TaskId& taskId, const std::vector<std::string>& newWords) {
     // Valida tudo antes de alterar qualquer estado.
     for (const std::string& word : newWords) {
         if (word.empty()) {
@@ -151,15 +151,15 @@ bool Trie::startsWith(std::string_view prefix) const {
     return findNode(prefix) != nullptr;
 }
 
-std::vector<TaskId> Trie::findTaskIds(std::string_view word) const {
+std::vector<Task::TaskId> Trie::findTaskIds(std::string_view word) const {
     if (word.empty()) {
         return {};
     }
     const Node* node = findNode(word);
-    return node != nullptr ? node->taskIds : std::vector<TaskId>{};
+    return node != nullptr ? node->taskIds : std::vector<Task::TaskId>{};
 }
 
-std::vector<std::string> Trie::wordsOf(TaskId taskId) const {
+std::vector<std::string> Trie::wordsOf(const Task::TaskId& taskId) const {
     const auto it = reverseIndex_.find(taskId);
     return it != reverseIndex_.end() ? it->second : std::vector<std::string>{};
 }
@@ -235,7 +235,7 @@ void Trie::pruneBranch(std::string_view word) {
     }
 }
 
-void Trie::unlinkFromReverseIndex(TaskId taskId, std::string_view word) {
+void Trie::unlinkFromReverseIndex(const Task::TaskId& taskId, std::string_view word) {
     const auto it = reverseIndex_.find(taskId);
     if (it == reverseIndex_.end()) {
         return;
