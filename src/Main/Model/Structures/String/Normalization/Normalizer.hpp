@@ -5,17 +5,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <utility>
 
 #include "src/Main/Model/Structures/String/Core/Buffer/StringBuffer.hpp"
 #include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 
+namespace Normalizer {
 using NormalizerView = StringView::StringView;
 using NormalizerBuffer = StringBuffer::StringBuffer;
 
-namespace Normalizer {
-   
 enum class UnicodeForm { NFC, NFD };
 
 class Normalizer {
@@ -40,7 +40,7 @@ struct Decomposition {
     char32_t second;
 };
 
-const Decomposition kDecompositions[] = {
+inline constexpr Decomposition kDecompositions[] = {
     {0x00C0, 0x0041, 0x0300}, {0x00C1, 0x0041, 0x0301}, {0x00C2, 0x0041, 0x0302},
     {0x00C3, 0x0041, 0x0303}, {0x00C4, 0x0041, 0x0308}, {0x00C5, 0x0041, 0x030A},
     {0x00C7, 0x0043, 0x0327}, {0x00C8, 0x0045, 0x0300}, {0x00C9, 0x0045, 0x0301},
@@ -149,6 +149,8 @@ const std::unordered_map<char32_t, std::pair<char32_t, char32_t>>& decomposition
 
 const std::unordered_map<std::uint64_t, char32_t>& compositionMap();
 
+const std::unordered_map<char32_t, std::u32string>& caseFoldMap();
+
 bool isCombiningMark(char32_t c);
 
 int combiningClass(char32_t c);
@@ -171,4 +173,4 @@ std::u32string applyDiacriticRemoval(const std::u32string& input);
 
 }  // namespace Normalizer
 
-#endif // NORMALIZER_HPP
+#endif  // NORMALIZER_HPP

@@ -1,16 +1,15 @@
 #include "Normalizer.hpp"
 
-using NV = NormalizerView;
-using NB = NormalizerBuffer;
-
 namespace Normalizer {
+
+namespace Details {
 
 bool inRange(char32_t c, char32_t low, char32_t high) {
     return c >= low && c <= high;
 }
 
-std::u32string decodeUtf8(NV input) {
-    static const char32_t kMinByLength[] = {0, 0, 0x80, 0x800, 0x10000};
+std::u32string decodeUtf8(NormalizerView input) {
+    static constexpr char32_t kMinByLength[] = {0, 0, 0x80, 0x800, 0x10000};
     const char* bytes = input.data();
     const std::size_t inputSize = input.size();
 
@@ -62,9 +61,9 @@ std::u32string decodeUtf8(NV input) {
     return output;
 }
 
-NB encodeUtf8(const std::u32string& input) {
-    NB output;
-    output.reserve(input.size());
+NormalizerBuffer encodeUtf8(const std::u32string& input) {
+    NormalizerBuffer output;
+    output.reserve(input.size() * 2);
 
     for (const char32_t cp : input) {
         if (cp < 0x80) {
@@ -89,6 +88,7 @@ NB encodeUtf8(const std::u32string& input) {
 const std::unordered_map<char32_t, std::pair<char32_t, char32_t>>& decompositionMap() {
     static const auto map = [] {
         std::unordered_map<char32_t, std::pair<char32_t, char32_t>> result;
+        result.reserve(std::size(kDecompositions));
         for (const auto& entry : kDecompositions) {
             result.emplace(entry.composed, std::make_pair(entry.first, entry.second));
         }
@@ -100,8 +100,11 @@ const std::unordered_map<char32_t, std::pair<char32_t, char32_t>>& decomposition
 const std::unordered_map<std::uint64_t, char32_t>& compositionMap() {
     static const auto map = [] {
         std::unordered_map<std::uint64_t, char32_t> result;
+        result.reserve(std::size(kDecompositions));
         for (const auto& entry : kDecompositions) {
-            const std::uint64_t key = (static_cast<std::uint64_t>(entry.first) << 32) | entry.second;
+            const std::uint64_t key =
+                (static_cast<std::uint64_t>(entry.first) << 32) |
+                static_cast<std::uint64_t>(entry.second);
             result.emplace(key, entry.composed);
         }
         return result;
@@ -109,8 +112,30 @@ const std::unordered_map<std::uint64_t, char32_t>& compositionMap() {
     return map;
 }
 
+const std::unordered_map<char32_t, std::u32string>& caseFoldMap() {
+    static const std::unordered_map<char32_t, std::u32string> map = {
+        {0x00DF, U"ss"},
+        {0x0130, U"i\u0307"},
+        {0x0178, U"\u00FF"},
+        {0x017F, U"s"},
+        {0x01AF, U"\u01B0"},
+        {0x01F4, U"\u01F5"},
+        {0x1E9E, U"ss"},
+        {0x1E9E, U"ss"},
+        // Excecoes notaveis em Latin Extended Additional
+        {0x1E9A, U"a\u02BE"},
+        {0x1E9B, U"\u1E61"},
+        {0x1E9C, U"\u1E61"},
+        {0x1E9D, U"\u1E61"},
+    };
+    return map;
+}
+
 bool isCombiningMark(char32_t c) {
-    return inRange(c, 0x0300, 0x036F);
+    return inRange(c, 0x0300, 0x036F) ||
+           inRange(c, 0x1AB0, 0x1AFF) ||
+           inRange(c, 0x1DC0, 0x1DFF) ||
+           inRange(c, 0xFE20, 0xFE2F);
 }
 
 int combiningClass(char32_t c) {
@@ -135,7 +160,9 @@ void decomposeInto(char32_t c, std::u32string& output) {
 std::u32string decompose(const std::u32string& input) {
     std::u32string output;
     output.reserve(input.size() + input.size() / 4);
-    for (const char32_t c : input) decomposeInto(c, output);
+    for (const char32_t c : input) {
+        decomposeInto(c, output);
+    }
 
     std::size_t i = 0;
     while (i < output.size()) {
@@ -144,7 +171,9 @@ std::u32string decompose(const std::u32string& input) {
             continue;
         }
         std::size_t j = i;
-        while (j < output.size() && combiningClass(output[j]) != 0) ++j;
+        while (j < output.size() && combiningClass(output[j]) != 0) {
+            ++j;
+        }
         std::stable_sort(output.begin() + static_cast<std::ptrdiff_t>(i),
                          output.begin() + static_cast<std::ptrdiff_t>(j),
                          [](char32_t a, char32_t b) { return combiningClass(a) < combiningClass(b); });
@@ -161,25 +190,37 @@ std::u32string compose(const std::u32string& input) {
     result.reserve(input.size());
     std::size_t starterIndex = kNoStarter;
     int lastClass = 0;
+    bool blocked = false;
 
     for (const char32_t c : input) {
         const int currentClass = combiningClass(c);
 
-        if (starterIndex != kNoStarter) {
+        if (starterIndex != kNoStarter && currentClass != 0) {
             const bool adjacent = (result.size() - 1 == starterIndex);
-            if (adjacent || lastClass < currentClass) {
-                const std::uint64_t key = (static_cast<std::uint64_t>(result[starterIndex]) << 32) | c;
+            if (!blocked && (adjacent || lastClass < currentClass)) {
+                const std::uint64_t key =
+                    (static_cast<std::uint64_t>(result[starterIndex]) << 32) |
+                    static_cast<std::uint64_t>(c);
                 const auto it = map.find(key);
                 if (it != map.end()) {
                     result[starterIndex] = it->second;
                     continue;
                 }
             }
+            if (currentClass >= lastClass && lastClass != 0) {
+                blocked = true;
+            }
+            if (currentClass > lastClass) {
+                lastClass = currentClass;
+            }
+            result.push_back(c);
+            continue;
         }
 
         if (currentClass == 0) {
             starterIndex = result.size();
             lastClass = 0;
+            blocked = false;
         } else {
             lastClass = currentClass;
         }
@@ -190,39 +231,35 @@ std::u32string compose(const std::u32string& input) {
 
 void appendCaseFolded(char32_t c, std::u32string& output) {
     if (c < 0x80) {
-        output.push_back((c >= U'A' && c <= U'Z') ? c + 0x20 : c);
+        output.push_back((c >= U'A' && c <= U'Z') ? static_cast<char32_t>(c + 0x20) : c);
         return;
     }
 
-    switch (c) {
-        case 0x00DF: output.append(U"ss"); return;
-        case 0x0130: output.append(U"i\u0307"); return;
-        case 0x0178: output.push_back(0x00FF); return;
-        case 0x017F: output.push_back(U's'); return;
-        case 0x01AF: output.push_back(0x01B0); return;
-        case 0x01F4: output.push_back(0x01F5); return;
-        case 0x1E9E: output.append(U"ss"); return;
-        default: break;
+    const auto& special = caseFoldMap();
+    const auto it = special.find(c);
+    if (it != special.end()) {
+        output.append(it->second);
+        return;
     }
 
     if (inRange(c, 0x00C0, 0x00DE) && c != 0x00D7) {
-        output.push_back(c + 0x20);
+        output.push_back(static_cast<char32_t>(c + 0x20));
         return;
     }
 
     const bool upperIsEven =
         inRange(c, 0x0100, 0x012F) || inRange(c, 0x0132, 0x0137) || inRange(c, 0x014A, 0x0177) ||
         inRange(c, 0x01A0, 0x01A5) || inRange(c, 0x01DE, 0x01EF) || inRange(c, 0x01F8, 0x021F) ||
-        inRange(c, 0x1E00, 0x1E95) || inRange(c, 0x1EA0, 0x1EFF);
+        inRange(c, 0x1EA0, 0x1EFF);
     if (upperIsEven) {
-        output.push_back((c & 1u) == 0 ? c + 1 : c);
+        output.push_back((c & 1u) == 0 ? static_cast<char32_t>(c + 1) : c);
         return;
     }
 
     const bool upperIsOdd =
         inRange(c, 0x0139, 0x0148) || inRange(c, 0x0179, 0x017E) || inRange(c, 0x01CD, 0x01DC);
     if (upperIsOdd) {
-        output.push_back((c & 1u) != 0 ? c + 1 : c);
+        output.push_back((c & 1u) != 0 ? static_cast<char32_t>(c + 1) : c);
         return;
     }
 
@@ -237,7 +274,9 @@ std::u32string applyUnicodeForm(const std::u32string& input, UnicodeForm form) {
 std::u32string applyCaseFolding(const std::u32string& input) {
     std::u32string output;
     output.reserve(input.size());
-    for (const char32_t c : input) appendCaseFolded(c, output);
+    for (const char32_t c : input) {
+        appendCaseFolded(c, output);
+    }
     return output;
 }
 
@@ -246,38 +285,50 @@ std::u32string applyDiacriticRemoval(const std::u32string& input) {
     std::u32string stripped;
     stripped.reserve(decomposed.size());
     for (const char32_t c : decomposed) {
-        if (!isCombiningMark(c)) stripped.push_back(c);
+        if (!isCombiningMark(c)) {
+            stripped.push_back(c);
+        }
     }
     return compose(stripped);
 }
 
+}  // namespace Details
+
 Normalizer::Normalizer(UnicodeForm form) : form_(form) {}
 
-NB Normalizer::normalizeUnicode(NV utf8Text) const {
-    return encodeUtf8(applyUnicodeForm(decodeUtf8(utf8Text), form_));
+NormalizerBuffer Normalizer::normalizeUnicode(NormalizerView utf8Text) const {
+    return Details::encodeUtf8(Details::applyUnicodeForm(Details::decodeUtf8(utf8Text), form_));
 }
 
-NB Normalizer::caseFold(NV utf8Text) const {
-    return encodeUtf8(applyCaseFolding(decodeUtf8(utf8Text)));
+NormalizerBuffer Normalizer::caseFold(NormalizerView utf8Text) const {
+    return Details::encodeUtf8(Details::applyCaseFolding(Details::decodeUtf8(utf8Text)));
 }
 
-NB Normalizer::removeDiacritics(NV utf8Text) const {
-    return encodeUtf8(applyDiacriticRemoval(decodeUtf8(utf8Text)));
+NormalizerBuffer Normalizer::removeDiacritics(NormalizerView utf8Text) const {
+    return Details::encodeUtf8(Details::applyDiacriticRemoval(Details::decodeUtf8(utf8Text)));
 }
 
-NB Normalizer::normalize(NV utf8Text) const {
-    std::u32string text = decodeUtf8(utf8Text);
-    text = applyUnicodeForm(text, form_);
-    text = applyCaseFolding(text);
-    text = applyDiacriticRemoval(text);
-    text = applyUnicodeForm(text, form_);
-    return encodeUtf8(text);
+NormalizerBuffer Normalizer::normalize(NormalizerView utf8Text) const {
+    std::u32string text = Details::decodeUtf8(utf8Text);
+    text = Details::applyCaseFolding(text);
+    text = Details::decompose(text);
+
+    std::u32string stripped;
+    stripped.reserve(text.size());
+    for (const char32_t c : text) {
+        if (!Details::isCombiningMark(c)) {
+            stripped.push_back(c);
+        }
+    }
+
+    text = Details::applyUnicodeForm(stripped, form_);
+    return Details::encodeUtf8(text);
 }
 
-bool Normalizer::equivalent(NV lhs, NV rhs) const {
-    const NB left = normalize(lhs);
-    const NB right = normalize(rhs);
+bool Normalizer::equivalent(NormalizerView lhs, NormalizerView rhs) const {
+    const NormalizerBuffer left = normalize(lhs);
+    const NormalizerBuffer right = normalize(rhs);
     return left.view() == right.view();
 }
 
-} // namespace Normalizer
+}  // namespace Normalizer

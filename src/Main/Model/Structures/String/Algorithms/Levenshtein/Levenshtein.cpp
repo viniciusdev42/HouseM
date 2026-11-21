@@ -2,16 +2,13 @@
 
 #include <vector>
 
-using LA = LevenArray;
-using LV = LevenView;
-
 namespace Levenshtein {
 
 namespace {
 
 // Duas linhas bastam para a distancia: memoria O(min(n, m)) em vez de O(n * m).
 // `longer` percorre as linhas; `shorter` define as colunas.
-std::size_t distance_two_rows(LV longer, LV shorter) {
+std::size_t distance_two_rows(LevenView longer, LevenView shorter) {
     const std::size_t n = longer.size();
     const std::size_t m = shorter.size();
 
@@ -36,11 +33,11 @@ std::size_t distance_two_rows(LV longer, LV shorter) {
 
 }
 
-LA levenshtein_matrix(LV a, LV b) {
+LevenArray levenshtein_matrix(LevenView a, LevenView b) {
     const std::size_t n = a.size();
     const std::size_t m = b.size();
 
-    LA matrix =
+    LevenArray matrix =
         DynamicArray::Tables::make_levenshtein_matrix(n, m);
 
     for (std::size_t i = 0; i <= n; ++i) {
@@ -65,12 +62,12 @@ LA levenshtein_matrix(LV a, LV b) {
     return matrix;
 }
 
-std::size_t levenshtein_distance(LV a, LV b) {
+std::size_t levenshtein_distance(LevenView a, LevenView b) {
     return (a.size() >= b.size()) ? distance_two_rows(a, b)
                                   : distance_two_rows(b, a);
 }
 
-double levenshtein_similarity(LV a, LV b) {
+double levenshtein_similarity(LevenView a, LevenView b) {
     const std::size_t max_len = std::max(a.size(), b.size());
     if (max_len == 0) {
         return 1.0;

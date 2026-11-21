@@ -30,39 +30,6 @@ std::uint64_t hash_of(KV text, std::size_t length) noexcept {
     return hash;
 }
 
-namespace detail {
-
-// on_match(position) -> bool: retorne false para interromper a busca.
-template <typename OnMatch>
-void for_each_match(KV text, KV pattern, OnMatch on_match) {
-    const std::size_t n = text.size();
-    const std::size_t m = pattern.size();
-
-    if (m == 0 || m > n) {
-        return;
-    }
-
-    const std::uint64_t pattern_hash = hash_of(pattern, m);
-    std::uint64_t window_hash = hash_of(text, m);
-    const std::uint64_t high = power_mod(m - 1);  // kBase^(m-1) mod kModulus
-
-    const std::size_t last = n - m;
-    for (std::size_t i = 0; i <= last; ++i) {
-        if (window_hash == pattern_hash && equals_at(text, pattern, i)) {
-            if (!on_match(i)) {
-                return;
-            }
-        }
-
-        if (i < last) {
-            const std::uint64_t removed = (to_value(text[i]) * high) % kModulus;
-            window_hash = (window_hash + kModulus - removed) % kModulus;
-            window_hash = (window_hash * kBase + to_value(text[i + m])) % kModulus;
-        }
-    }
-}
-} //namespace detail
-
 KA find_all(KV text, KV pattern) {
    KA positions;
     detail::for_each_match(text, pattern, [&positions](std::size_t position) {

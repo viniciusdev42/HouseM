@@ -1,24 +1,42 @@
 #include "SuffixArray.hpp"
 
+namespace SuffixArray {
+
+    SuffixArray::SuffixArray(SuffixView text)
+    : text_(text) {
+    buildSuffixArray();
+    buildLcp();
+}
+
     /// Tamanho do texto (e do suffix array).
-    size_type size() const noexcept { return sa_.size(); }
+    SuffixArray:: size_type() SuffixArray::size() const noexcept { 
+        return sa_.size(); 
+    }
 
     /// Posição inicial do i-ésimo menor sufixo (ordem lexicográfica).
-    int operator[](size_type i) const { return sa_[i]; }
+    int SuffixArray::operator[](size_type i) const { 
+        return sa_[i]; 
+    }
 
     /// Vetor de sufixos completo.
-    const std::vector<int>& suffixArray() const noexcept { return sa_; }
+    const std::vector<int>& SuffixArray::suffixArray() const noexcept { 
+        return sa_;
+     }
 
     /// rank()[i] = posição do sufixo que começa em i dentro do suffix array.
-    const std::vector<int>& rank() const noexcept { return rank_; }
+    const std::vector<int>& SuffixArray::rank() const noexcept { 
+        return rank_; 
+    }
 
     /// lcp()[i] = tamanho do maior prefixo comum entre sa[i] e sa[i-1]; lcp()[0] = 0.
-    const std::vector<int>& lcp() const noexcept { return lcp_; }
+    const std::vector<int>& SuffixArray::lcp() const noexcept { 
+        return lcp_; 
+    }
 
 // ------------------------------------------------------------------
 //    Prefix Doubling
 // ------------------------------------------------------------------    
- void buildSuffixArray() {
+ void SuffixArray::buildSuffixArray() {
         const int n = static_cast<int>(text_.size());
         sa_.assign(n, 0);
         rank_.assign(n, 0);
@@ -30,17 +48,18 @@
 
         int classes = sortByFirstCharacter(counter);
 
-        for (int k = 1; k < n && classes < n; k <<= 1) {
-            orderBySecondKey(k, sortedBySecondKey);
+        for (long long k = 1; k < n && classes < n; k <<= 1) {
+            const int step = static_cast<int>(k);
+            orderBySecondKey(step, sortedBySecondKey);
             countingSortByFirstKey(sortedBySecondKey, classes, counter);
-            classes = recomputeRanks(k, newRank);
+            classes = recomputeRanks(step, newRank);
             rank_.swap(newRank);
         }
     }
 
     /// Ordena os sufixos pelo primeiro caractere e inicializa rank_.
     /// Retorna a quantidade de classes de equivalência distintas.
-    int sortByFirstCharacter(std::vector<int>& counter) {
+    int SuffixArray::sortByFirstCharacter(std::vector<int>& counter) {
         const int n = static_cast<int>(text_.size());
 
         std::fill(counter.begin(), counter.begin() + kAlphabetSize, 0);
@@ -59,7 +78,7 @@
 
     /// Gera os sufixos ordenados pela segunda metade (chave i + k).
     /// Sufixos com i + k >= n têm segunda chave vazia (menor possível) e vêm primeiro.
-    void orderBySecondKey(int k, std::vector<int>& out) const {
+    void SuffixArray::orderBySecondKey(int k, std::vector<int>& out) const {
         const int n = static_cast<int>(text_.size());
         int p = 0;
         for (int i = n - k; i < n; ++i) out[p++] = i;
@@ -69,7 +88,7 @@
     }
 
     /// Counting Sort estável pela primeira chave (rank_[i]) sobre a ordem da segunda chave.
-    void countingSortByFirstKey(const std::vector<int>& bySecondKey,
+    void SuffixArray::countingSortByFirstKey(const std::vector<int>& bySecondKey,
                                 int classes,
                                 std::vector<int>& counter) {
         const int n = static_cast<int>(text_.size());
@@ -85,7 +104,7 @@
 
     /// Recalcula os ranks com base nos pares (rank[i], rank[i + k]).
     /// Retorna o novo número de classes.
-    int recomputeRanks(int k, std::vector<int>& newRank) const {
+    int SuffixArray::recomputeRanks(int k, std::vector<int>& newRank) const {
         const int n = static_cast<int>(text_.size());
 
         int classes = 1;
@@ -101,16 +120,16 @@
         return classes;
     }
 
-    int secondKey(int i, int k) const {
+    int SuffixArray::secondKey(int i, int k) const {
         return (i + k < static_cast<int>(text_.size())) ? rank_[i + k] : -1;
     }
 
-    int charAt(int i) const { return static_cast<unsigned char>(text_[i]); }
+    int SuffixArray::charAt(int i) const { return static_cast<unsigned char>(text_[i]); }
 
     // ------------------------------------------------------------------
     //  LCP (Kasai)
     // ------------------------------------------------------------------
-    void buildLcp() {
+    void SuffixArray::buildLcp() {
         const int n = static_cast<int>(text_.size());
         lcp_.assign(n, 0);
 
@@ -126,3 +145,4 @@
             }
         }
     }
+} 

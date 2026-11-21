@@ -13,8 +13,8 @@
  * vetor LCP calculado pelo algoritmo de Kasai em O(n).
  */
 
-#ifndef SUFIX_ARRAY_HPP
-#define SUFIX_ARRAY_HPP
+#ifndef SUFFIX_ARRAY_HPP
+#define SUFFIX_ARRAY_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -22,21 +22,19 @@
 
 #include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 
+namespace SuffixArray {
+
 using SuffixView = StringView::StringView;
 
 class SuffixArray {
 public:
     using size_type = std::size_t;
 
-    explicit SuffixArray(SuffixView text)
-        : text_(text) {
-        buildSuffixArray();
-        buildLcp();
-    }
-    
+    explicit SuffixArray(SuffixView text);
+
     size_type size() const noexcept;
     
-    int operator[](size_type i) const;
+    int operator[](size_type i) const noexcept;
 
     const std::vector<int>& suffixArray() const noexcept;
     
@@ -56,17 +54,21 @@ private:
     
     int sortByFirstCharacter(std::vector<int>& counter);
   
-    void orderBySecondKey(int k, std::vector<int>& out);
+    void orderBySecondKey(int k, std::vector<int>& out) const noexcept;
     
-    void countingSortByFirstKey(const std::vector<int>& bySecondKey,int classes,std::vector<int>& counter);
+    void countingSortByFirstKey(const std::vector<int>& bySecondKey,
+                                int classes,std::vector<int>& counter) noexcept;
         
-    int recomputeRanks(int k, std::vector<int>& newRank)const;
+    int recomputeRanks(int k, std::vector<int>& newRank)const noexcept;
     
-    int secondKey(int i, int k) const;
+    int secondKey(int i, int k) const noexcept;
     
-    int charAt(int i) const;
+    int charAt(int i) const noexcept;
     
-    void buildLcp();
+    void buildLcp() noexcept;
     
 };    
-#endif // SUFIX_ARRAY_HPP
+
+} // namespace SuffixArray
+
+#endif // SUFFIX_ARRAY_HPP

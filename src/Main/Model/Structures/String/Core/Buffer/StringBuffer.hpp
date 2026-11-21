@@ -22,10 +22,10 @@
 
 #include "src/Main/Model/Structures/String/Core/Buffer/StringView.hpp"
 
+namespace StringBuffer {
+
 using BufferView = StringView::StringView;
 
-namespace StringBuffer {
-    
 class StringBuffer {
 public:
     static constexpr std::size_t kDefaultCapacity = 16;

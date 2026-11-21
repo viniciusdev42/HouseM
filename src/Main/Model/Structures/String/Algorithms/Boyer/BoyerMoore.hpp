@@ -13,10 +13,10 @@
 #include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 #include "src/Main/Model/Structures/String/Core/Array/DynamicArray.hpp"
 
+namespace BoyerMoore {
+
 using BoyerView = StringView::StringView;
 using BoyerArray = DynamicArray::IndexArray;
-
-namespace BoyerMoore {
 
 class BoyerMoore {
 public:
@@ -24,13 +24,13 @@ public:
 
     explicit BoyerMoore(BoyerView pattern);
 
-    [[nodiscard]] std::size_t find_first(BoyerView text) const noexcept;
+    [[nodiscard]] std::size_t find_first(BoyerView text) const;
 
-    [[nodiscard]] std::optional<std::size_t> find(BoyerView text) const noexcept;
+    [[nodiscard]] std::optional<std::size_t> find(BoyerView text) const;
 
     [[nodiscard]] BoyerArray find_all(BoyerView text) const;
 
-    [[nodiscard]] bool contains(BoyerView text) const noexcept;
+    [[nodiscard]] bool contains(BoyerView text) const;
 
     [[nodiscard]] const std::string& pattern() const noexcept;
 

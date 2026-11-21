@@ -27,17 +27,17 @@ void ensureWithinMaxSize(std::size_t requested, const char* operation) {
 } // namespace
 
 // Cópia estável de uma view(), independente do buffer de origem.
-std::string toStdString(BV text) {
+std::string toStdString(BufferView text) {
     return text.empty() ? std::string() : std::string(text.data(), text.size());
 }
 
-BV toView(const std::string& text) {
-    return BV(text.data(), text.size());
+BufferView toView(const std::string& text) {
+    return BufferView(text.data(), text.size());
 }
 
 // Busca `needle` em `haystack` a partir de `from`, usando substr() e
 // operator== de StringView. Retorna kNpos se não encontrar.
-std::size_t findFrom(BV haystack, BV needle, std::size_t from) {
+std::size_t findFrom(BufferView haystack, BufferView needle, std::size_t from) {
     if (needle.size() > haystack.size()) {
         return kNpos;
     }
@@ -60,11 +60,13 @@ char& StringBuffer::operator[](std::size_t i) noexcept { return data_[i]; }
 
 char StringBuffer::operator[](std::size_t i) const noexcept { return data_[i]; }
 
-const char* StringBuffer::c_str() const noexcept { return data_ ? data_.get() : ""; }
+const char* StringBuffer::rawData_() const noexcept {return data_ ? data_.get() : "";}
 
-BufferView StringBuffer::view() const noexcept { return BufferView(c_str(), size_); }
+const char* StringBuffer::c_str() const noexcept { return rawData_();}
 
-std::string StringBuffer::str() const { return std::string(c_str(), size_); }
+BufferView StringBuffer::view() const noexcept { return BufferView(rawData_(),size); }
+
+std::string StringBuffer::str() const { return std::string(rawData_(), size_); }
 
 // ---------------------------------------------------------------------------
 // Construção, cópia, movimentação
@@ -296,6 +298,7 @@ char StringBuffer::at(std::size_t index) const {
 // ---------------------------------------------------------------------------
 // Auxiliares privados
 // ---------------------------------------------------------------------------
+
 
 void StringBuffer::checkPosition(std::size_t pos, const char* operation) const {
     if (pos > size_) {

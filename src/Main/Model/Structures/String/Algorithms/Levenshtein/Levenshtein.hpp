@@ -7,10 +7,10 @@
 #include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 #include "src/Main/Model/Structures/String/Core/Array/DynamicArray.hpp"
 
+namespace Levenshtein {
+
 using LevenView = StringView::StringView;
 using LevenArray = DynamicArray::LevenshteinMatrix;
-
-namespace Levenshtein {
 
 LevenArray levenshtein_matrix(LevenView a, LevenView b);
 

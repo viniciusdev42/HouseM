@@ -1,12 +1,9 @@
 #include "BoyerMoore.hpp"
 
-using BV = BoyerView;
-using BA = BoyerArray;
-
 namespace BoyerMoore {
 
 /* pattern = objeto BoyerView ; pattern_ = std::string */
-BoyerMoore::BoyerMoore(BV pattern) : pattern_(pattern.data(), pattern.size()) {  // Converte StringView pra std::string
+BoyerMoore::BoyerMoore(BoyerView pattern) : pattern_(pattern.data(), pattern.size()) {  // Converte StringView pra std::string
     if (pattern_.empty()) {
         throw std::invalid_argument("BoyerMoore: o padrao nao pode ser vazio.");
     }
@@ -14,7 +11,7 @@ BoyerMoore::BoyerMoore(BV pattern) : pattern_(pattern.data(), pattern.size()) { 
     build_good_suffix_table();
 }
 
-std::size_t BoyerMoore::find_first(BV text) const noexcept {
+std::size_t BoyerMoore::find_first(BoyerView text) const {
     std::size_t result = npos;
     search(text, [&result](std::size_t position) {
         result = position;
@@ -23,7 +20,7 @@ std::size_t BoyerMoore::find_first(BV text) const noexcept {
     return result;
 }
 
-std::optional<std::size_t> BoyerMoore::find(BV text) const noexcept {
+std::optional<std::size_t> BoyerMoore::find(BoyerView text) const {
     const std::size_t position = find_first(text);
     if (position == npos) {
         return std::nullopt;
@@ -31,8 +28,8 @@ std::optional<std::size_t> BoyerMoore::find(BV text) const noexcept {
     return position;
 }
 
-BA BoyerMoore::find_all(BV text) const {
-    BA positions;
+BoyerArray BoyerMoore::find_all(BoyerView text) const {
+    BoyerArray positions;
     search(text, [&positions](std::size_t position) {
         positions.push_back(position);
         return true;
@@ -40,7 +37,7 @@ BA BoyerMoore::find_all(BV text) const {
     return positions;
 }
 
-bool BoyerMoore::contains(BV text) const noexcept {
+bool BoyerMoore::contains(BoyerView text) const {
     return find_first(text) != npos;
 }
 
@@ -94,11 +91,11 @@ std::ptrdiff_t BoyerMoore::bad_character_shift(std::size_t mismatch_index, char 
     return static_cast<std::ptrdiff_t>(mismatch_index) - last_occurrence_[to_index(text_char)];
 }
 
-std::size_t find_first(BV text, BV pattern) {
+std::size_t find_first(BoyerView text, BoyerView pattern) {
     return BoyerMoore(pattern).find_first(text);
 }
 
-BA find_all(BV text, BV pattern) {
+BoyerArray find_all(BoyerView text, BoyerView pattern) {
     return BoyerMoore(pattern).find_all(text);
 }
 
