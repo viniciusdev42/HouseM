@@ -1,11 +1,8 @@
-// Testes simples para Normalizer (sem frameworks externos).
-// Os literais UTF-8 usam escapes \x para não depender da codificação do arquivo.
-
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "Normalizer.hpp"
+#include "src/Model/Structures/String/Normalization/Normalizer.hpp"
 
 namespace {
 

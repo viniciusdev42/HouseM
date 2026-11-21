@@ -1,16 +1,11 @@
 /*
- * Testes do PageBuffer integrados com Page e DiskManager reais.
- * Sem frameworks externos: apenas a biblioteca padrão do C++.
- *
- * Compilação (ajuste -I para a raiz que contém "src/Storage/..."):
- *   g++ -std=c++17 -I<raiz> PageBufferTest.cpp PageBuffer.cpp Page.cpp DiskManager.cpp -o page_buffer_test
- *
  * Cada teste usa um arquivo temporário próprio, removido ao final.
  * O código de saída é 0 se todos os testes passarem e 1 caso contrário.
  *
  * Observação: a falha de gravação durante a substituição de uma Page suja não
  * é testada aqui, pois não há como provocá-la de forma portátil no DiskManager real.
  */
+
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
@@ -18,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "PageBuffer.hpp"
+#include "src/Storage/PageBuffer/PageBuffer.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini-framework de testes

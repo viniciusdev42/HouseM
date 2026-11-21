@@ -1,9 +1,4 @@
-// Testes simples para PriorityList, sem frameworks externos.
-//
-// Compilar:  g++ -std=c++17 -Wall -Wextra PriorityList.cpp test_PriorityList.cpp -o test_PriorityList
-// Executar:  ./test_PriorityList   (retorna 0 se tudo passar, 1 caso contrário)
-
-#include "PriorityList.hpp"
+#include "src/Model/Structures/PriorityList/PriorityList.hpp"
 
 #include <iostream>
 #include <stdexcept>

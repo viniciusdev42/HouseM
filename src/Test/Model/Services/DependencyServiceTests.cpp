@@ -1,6 +1,3 @@
-// Testes simples para DependencyService, sem frameworks externos.
-// Retorna 0 se todos passarem e 1 caso contrário.
-
 #include <algorithm>
 #include <iostream>
 #include <set>

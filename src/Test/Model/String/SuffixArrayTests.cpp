@@ -1,18 +1,10 @@
-// Testes simples para SuffixArray (sem frameworks externos).
-//
-// Cobre apenas o que SuffixArray implementa:
-//   size(), operator[], suffixArray(), rank(), lcp()
-//
-// As views são criadas com o construtor (ponteiro, tamanho), que é constexpr
-// e não exige StringView.cpp.
-
 #include <algorithm>
 #include <iostream>
 #include <numeric>
 #include <string>
 #include <vector>
 
-#include "SuffixArray.hpp"
+#include "src/Model/Structures/String/Indexing/SuffixArray.hpp"
 
 namespace {
 

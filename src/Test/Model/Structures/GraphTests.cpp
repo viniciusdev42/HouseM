@@ -1,10 +1,4 @@
-// Testes simples para Graph (sem frameworks externos).
-//
-// Compilar e executar:
-//   g++ -std=c++17 -Wall -Wextra GraphTests.cpp Graph.cpp -o graph_tests
-//   ./graph_tests
-
-#include "Graph.hpp"
+#include "src/Model/Structures/Graph/Graph.hpp"
 
 #include <iostream>
 #include <sstream>

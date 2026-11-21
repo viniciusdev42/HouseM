@@ -1,13 +1,3 @@
-// Testes da entidade Dependency (sem frameworks externos).
-//
-// Compilação (a partir da raiz do projeto, para resolver "src/Model/..."):
-//   g++ -std=c++17 -I. DependencyTests.cpp Dependency.cpp \
-//       src/Model/Entities/Task/Task.cpp -o dependency_tests
-//
-// Execução:
-//   ./dependency_tests
-// O programa retorna 0 se todos os testes passarem e 1 caso contrário.
-
 #include <functional>
 #include <iostream>
 #include <optional>

@@ -1,17 +1,9 @@
-// Testes simples para Trie (TRIE.hpp / TRIE.cpp), sem frameworks externos.
-//
-// Compilar e executar:
-//   g++ -std=c++17 -Wall -Wextra TRIE.cpp TRIE_tests.cpp -o trie_tests
-//   ./trie_tests
-//
-// O programa retorna 0 se todos os testes passarem e 1 caso contrário.
-
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "TRIE.hpp"
+#include "src/Model/Structures/Trie/Trie.hpp"
 
 namespace {
 

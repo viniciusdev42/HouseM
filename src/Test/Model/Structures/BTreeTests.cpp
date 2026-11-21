@@ -1,11 +1,3 @@
-// Testes da BTree e do BTreeNode (sem frameworks externos).
-//
-// Compilar (exemplo):
-//   g++ -std=c++17 -Wall -Wextra BTreeTests.cpp BTree.cpp BTreeNode.cpp -o btree_tests
-//
-// Observação: os testes assumem que Key é construível a partir de inteiros
-// (hoje é int). Se o tipo mudar, ajuste o helper K().
-
 #include <cstddef>
 #include <iostream>
 #include <memory>
@@ -15,8 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include "BTree.hpp"
-#include "BTreeNode.hpp"
+#include "src/Model/Structures/BTree/BTree.hpp"
+#include "src/Model/Structures/BTree/BTreeNode.hpp"
 
 // ===========================================================================
 // Mini framework de testes

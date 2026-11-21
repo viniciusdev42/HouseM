@@ -1,18 +1,8 @@
-/* Testes do Tokenizer, sem frameworks externos.
- *
- * Compilar (ajuste o caminho do StringView.cpp, que contém as definições de
- * StringView):
- *   g++ -std=c++17 -Wall -Wextra TokenizerTests.cpp Tokenizer.cpp StringView.cpp -o tokenizer_tests
- * Executar:
- *   ./tokenizer_tests    (retorna 0 se tudo passou, 1 se algum teste falhou)
- *
- * Este arquivo deve ser salvo em UTF-8.
- */
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "Tokenizer.hpp"
+#include "src/Model/Structures/String/Tokenization/Tokenizer.hpp"
 
 using Tokenizer::Tokenizer;
 using Tokenizer::Text::PunctuationMode;

@@ -1,12 +1,3 @@
-// Testes de InMemoryTaskRepository (sem frameworks externos), incluindo
-// integração com a entidade Task.
-//
-// Compilar (exemplo):
-//   g++ -std=c++17 -I<raiz_do_projeto> ITaskRepositoryTests.cpp -o repo_tests -pthread
-//
-// Observação: Task.cpp (implementação de Task::create, start, complete, etc.)
-// precisa ser compilado/linkado junto, caso não seja header-only.
-
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -17,8 +8,6 @@
 #include <vector>
 
 #include "src/Model/Repositories/ITaskRepository.hpp"  
-
-
 
 // ---------------------------------------------------------------------------
 // Aliases (o namespace e a classe se chamam Task: Task::Task)

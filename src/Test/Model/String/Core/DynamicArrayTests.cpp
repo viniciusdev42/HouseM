@@ -1,10 +1,3 @@
-// Testes simples para DynamicArray.hpp / DynamicArray.cpp, sem frameworks externos.
-//
-// Compilação (ajuste os caminhos de include conforme o seu projeto; o
-// StringView.cpp é necessário porque ArrayView é construído a partir de const char*):
-//   g++ -std=c++17 -Wall -Wextra -I<raiz_do_projeto> DynamicArrayTests.cpp
-//       DynamicArray.cpp StringView.cpp -o dynamic_array_tests
-
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -13,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "DynamicArray.hpp"
+#include "src/Model/Structures/String/Core/DynamicArray.hpp"
 
 // O namespace e a classe se chamam DynamicArray: usamos um alias para evitar ambiguidade.
 template <typename T>

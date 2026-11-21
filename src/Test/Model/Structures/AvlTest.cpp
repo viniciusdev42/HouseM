@@ -1,8 +1,3 @@
-// Testes simples para AVLTree, sem frameworks externos.
-//
-// Compilar e executar:
-//   g++ -std=c++17 -Wall -Wextra test_AVL.cpp AVL.cpp -o test_AVL && ./test_AVL
-
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -10,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "AVL.hpp"
+#include "src/Model/Structures/Avl/Avl.hpp"
 
 // ----------------------------------------------------------------------------
 // Mini-framework: CHECK registra falhas sem interromper o teste.

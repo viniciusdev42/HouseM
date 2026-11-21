@@ -1,9 +1,4 @@
-// Testes simples para BTreeNode, sem dependências externas.
-//
-// Compilar:  g++ -std=c++17 -Wall -Wextra BTreeNodeTest.cpp BTreeNode.cpp -o btreenode_test
-// Executar:  ./btreenode_test
-
-#include "BTreeNode.hpp"
+#include "src/Model/Structures/BTree/BTreeNode.hpp"
 
 #include <iostream>
 #include <stdexcept>

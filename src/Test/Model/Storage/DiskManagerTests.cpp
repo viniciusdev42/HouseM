@@ -1,13 +1,8 @@
-// Testes do DiskManager (construtor, writePage e readPage) e da integração
-// com Page (registros sobrevivem à ida e volta ao disco).
-//
-// Sem framework externo: cada teste é uma função e CHECK registra falhas.
-// Compilar (exemplo):  g++ -std=c++17 -I. DiskManager.cpp Page.cpp DiskManagerTests.cpp -o disk_tests
-//
 // NOTA: os testes de baixo nível (formato em disco, cabeçalho corrompido,
 // preenchimento direto de pageData) precisam acessar `Page::header_`, que é
 // privado. O trecho abaixo abre o acesso apenas neste arquivo. Os testes de
 // integração ("page_*") usam somente a API pública da Page.
+
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -18,7 +13,7 @@
 #include <vector>
 
 #define private public
-#include "DiskManager.hpp"
+#include "src/Storage/DiskManager/DiskManager.hpp"
 #undef private
 
 namespace fs = std::filesystem;

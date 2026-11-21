@@ -1,10 +1,3 @@
-// Testes simples para StringBuffer, sem frameworks externos.
-//
-// Compilar (StringView.cpp é necessário para o link):
-//   g++ -std=c++17 -Wall -Wextra StringBuffer.cpp StringView.cpp StringBufferTests.cpp -o tests
-// Executar:
-//   ./tests   (retorna 0 se tudo passar, 1 caso contrário)
-
 #include <cstddef>
 #include <exception>
 #include <iostream>
@@ -13,7 +6,7 @@
 #include <string>
 #include <utility>
 
-#include "StringBuffer.hpp"
+#include "src/Model/Structures/String/Buffer/StringBuffer.hpp"
 
 using SB = StringBuffer::StringBuffer;
 

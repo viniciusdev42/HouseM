@@ -1,8 +1,3 @@
-// Testes do SearchService, sem frameworks externos.
-// Compilar junto com SearchService.cpp e as implementações dos módulos usados
-// (Trie, Kmp, RabinKarp, Levenshtein, Normalizer, Tokenizer, StringView...).
-// Retorna 0 se tudo passar e 1 se algum teste falhar.
-
 #include <chrono>
 #include <exception>
 #include <functional>
@@ -11,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "SearchService.hpp"
+#include "src/Model/Services/Search/SearchService.hpp"
 
 namespace {
 

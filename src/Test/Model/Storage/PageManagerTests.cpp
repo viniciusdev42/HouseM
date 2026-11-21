@@ -1,18 +1,9 @@
-// Testes de PageManager (sem frameworks externos), incluindo a integração com
-// Page e PageBuffer.
-//
-// Compilar (ajuste os caminhos conforme o projeto):
-//   g++ -std=c++17 -I. PageManagerTests.cpp PageManager.cpp Page.cpp \
-//       PageBuffer.cpp DiskManager.cpp -o page_manager_tests
-//
-// Retorna 0 se todos os testes passarem; caso contrário, o número de falhas.
-
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
 
-#include "PageManager.hpp"
+#include "src/Storage/PageManager/PageManager.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini-infraestrutura de testes

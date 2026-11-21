@@ -1,8 +1,5 @@
-// Testes simples da classe Page (sem dependências externas).
-// Compilar: g++ -std=c++17 -Wall -Wextra Page.cpp PageTest.cpp -o page_test
-// Executar: ./page_test
 
-#include "Page.hpp"
+#include "src/Storage/Page/Page.hpp"
 
 #include <cstring>
 #include <iostream>

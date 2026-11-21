@@ -1,6 +1,3 @@
-// Testes do TaskService, sem frameworks externos.
-// Compilar (exemplo): g++ -std=c++17 -I. TaskServiceTests.cpp TaskService.cpp Task.cpp -o task_service_tests
-
 #include <chrono>
 #include <functional>
 #include <iostream>

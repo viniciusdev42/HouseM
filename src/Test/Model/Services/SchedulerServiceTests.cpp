@@ -1,10 +1,3 @@
-// ---------------------------------------------------------------------------
-// Testes do SchedulerService (sem frameworks externos).
-// Depende apenas de: SchedulerService, ITaskRepository (InMemoryTaskRepository)
-// e Task. Compile junto com SchedulerService.cpp e Task.cpp, por exemplo:
-//   g++ -std=c++17 -I. SchedulerServiceTests.cpp SchedulerService.cpp Task.cpp
-// Retorna 0 se todos os testes passarem e 1 caso contrário.
-// ---------------------------------------------------------------------------
 #include <chrono>
 #include <exception>
 #include <iostream>

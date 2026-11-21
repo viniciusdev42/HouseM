@@ -1,17 +1,4 @@
-// ---------------------------------------------------------------------------
-// Testes do Serializer (sem frameworks externos).
-//
-// Escopo: serialize() e deserialize(), incluindo a integração com Page
-// (armazenamento do registro) e BTreeNode (nó serializado/reconstruído,
-// inclusive religação dos filhos com insertChild()).
-//
-// Compilação (ajuste os caminhos conforme o projeto):
-//   g++ -std=c++17 -I. SerializerTest.cpp Serializer.cpp \
-//       src/Storage/Page/Page.cpp src/Model/Structures/BTree/BTreeNode.cpp \
-//       -o serializer_test
-// ---------------------------------------------------------------------------
-
-#include "Serializer.hpp"
+#include "src/Storage/Serializer/Serializer.hpp"
 
 #include <cstdint>
 #include <iostream>

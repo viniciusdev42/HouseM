@@ -1,14 +1,8 @@
-// Testes simples para HashTable, sem dependências externas.
-//
-// Compilar e executar:
-//   g++ -std=c++17 -Wall -Wextra HashTable.cpp HashTableTests.cpp -o tests
-//   ./tests
-
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "HashTable.hpp"
+#include "src/Model/Structures/HashTable/HashTable.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini framework de testes

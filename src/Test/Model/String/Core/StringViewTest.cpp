@@ -1,13 +1,4 @@
-// Testes simples para StringView (sem frameworks externos).
-//
-// Compilar (exemplo):
-//   g++ -std=c++17 -Wall -Wextra StringView_test.cpp StringView.cpp -o stringview_test
-// Executar:
-//   ./stringview_test
-//
-// O programa retorna 0 se todos os testes passarem e 1 caso contrário.
-
-#include "StringView.hpp"
+#include "src/Model/Structures/String/View/StringView.hpp"
 
 #include <cstddef>
 #include <iostream>
