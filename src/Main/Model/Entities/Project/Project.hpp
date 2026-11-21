@@ -9,52 +9,56 @@
 #include <string_view>
 #include <vector>
 
+#include "src/Model/Entities/Task/Task.hpp"
+
 namespace Project {
 
-// Aliases compartilhados com a camada de domínio. Redeclarações idênticas
-// (por exemplo, em Task.hpp) são válidas em C++.
 using ProjectId = std::uint64_t;
-using TaskId = std::uint64_t;
-using Clock = std::chrono::system_clock;
-using TimePoint = Clock::time_point;
+using TaskId = Task::TaskId;
+using Clock = Task::Task::Clock;
+using TimePoint = Task::Task::TimePoint;
 
-/// Estados possíveis de um projeto.
+/*
+  1.Active:em andamento; permite alterações de metadados, transições de estado e 
+           adição/remoção de tarefas.
+
+  2.Completed: concluído; aceita edição de metadados e reabertura/arquivamento, 
+                 mas não aceita novas tarefas.
+
+  3.Archived: arquivado; bloqueia edições, remoção de tarefas e transições diretas 
+                         exceto unarchive().
+*/
 enum class ProjectStatus : std::uint8_t {
-    Active,     ///< Em andamento; aceita alterações.
-    Completed,  ///< Concluído; metadados editáveis, mas sem novas tarefas.
-    Archived    ///< Arquivado; somente leitura até ser desarquivado.
+    Active, 
+    Completed,
+    Archived
 };
 
-/// Representação textual do estado (útil para GUI, logs e serialização).
+/* Converte o enum em std::string_view ("Active", "Completed", "Archived" ou "Unknown")
+   para logs, serialização ou UI.*/
 std::string_view toString(ProjectStatus status) noexcept;
 
-/// Entidade de domínio que agrupa tarefas relacionadas.
-///
-/// O projeto referencia as tarefas apenas pelo identificador (`TaskId`),
-/// sem duplicar objetos `Task`, e não depende de GUI, armazenamento ou
-/// estruturas de dados da infraestrutura.
-///
-/// Tratamento de erros:
-///  - `std::invalid_argument`: dados inválidos (nome vazio, id zero, etc.).
-///  - `std::logic_error`: operação incompatível com o estado atual.
 class Project {
 public:
     static constexpr ProjectId kInvalidId = 0;
     static constexpr std::size_t kMaxNameLength = 120;
     static constexpr std::size_t kMaxDescriptionLength = 4096;
-
-    /// Cria um projeto ativo e sem tarefas.
-    /// O nome é normalizado (espaços nas extremidades são removidos).
-    /// @throws std::invalid_argument se id, nome, descrição ou prazo forem inválidos.
+    /* 
+      Cria um novo projeto sempre no estado Active, com lista de tarefas vazia e updatedAt_ igual a createdAt. 
+      Valida id, normaliza/valida name (remove espaços nas extremidades, não pode ser vazio nem passar de kMaxNameLength), 
+      valida description (kMaxDescriptionLength) e checa se deadline não é anterior a createdAt. 
+      Lança std::invalid_argument se algo falhar.*/ 
     Project(ProjectId id,
             std::string name,
             std::string description = {},
             std::optional<TimePoint> deadline = std::nullopt,
             TimePoint createdAt = Clock::now());
 
-    /// Reconstrói um projeto a partir de dados já persistidos, validando
-    /// todos os invariantes. Destinada à camada de serialização.
-    /// @throws std::invalid_argument se algum dado for inconsistente.
+    /* Reconstrói um projeto já salvo (ex.: vindo de repositório/serialização),
+       preservando status, updatedAt e taskIds.
+       Valida updatedAt >= createdAt, 
+       checa a lista de taskIds (sem duplicatas ou IDs inválidos) 
+       e aplica os invariantes básicos do projeto.*/
     static Project restore(ProjectId id,
                            std::string name,
                            std::string description,
@@ -64,7 +68,7 @@ public:
                            TimePoint updatedAt,
                            std::vector<TaskId> taskIds);
 
-    // --- Consultas ---------------------------------------------------------
+    // --- Consultas ---
 
     ProjectId id() const noexcept { return id_; }
     const std::string& name() const noexcept { return name_; }
@@ -74,48 +78,45 @@ public:
     TimePoint createdAt() const noexcept { return createdAt_; }
     TimePoint updatedAt() const noexcept { return updatedAt_; }
 
-    /// Identificadores das tarefas, na ordem de associação.
     const std::vector<TaskId>& taskIds() const noexcept { return taskIds_; }
     std::size_t taskCount() const noexcept { return taskIds_.size(); }
-    bool hasTask(TaskId taskId) const noexcept;
+    /* Verifica se taskId está presente em taskIds_ */
+    bool hasTask(const TaskId& taskId) const noexcept;
 
     bool isActive() const noexcept { return status_ == ProjectStatus::Active; }
     bool isCompleted() const noexcept { return status_ == ProjectStatus::Completed; }
     bool isArchived() const noexcept { return status_ == ProjectStatus::Archived; }
 
-    /// Verdadeiro se há prazo vencido e o projeto ainda está ativo.
+    /* Retorna true apenas se o projeto estiver Active, possuir deadline_ e now for posterior ao prazo */
     bool isOverdue(TimePoint now = Clock::now()) const noexcept;
 
-    // --- Edição de metadados (exige projeto não arquivado) -----------------
+    // --- Edição de metadados (exige projeto não arquivado) ---
 
-    void rename(std::string newName);
-    void setDescription(std::string newDescription);
-    void setDeadline(TimePoint deadline);
-    void clearDeadline();
+    void rename(std::string newName, TimePoint now = Clock::now());
+    void setDescription(std::string newDescription, TimePoint now = Clock::now());
+    void setDeadline(TimePoint deadline, TimePoint now = Clock::now());
+    void clearDeadline(TimePoint now = Clock::now());
 
-    // --- Tarefas -----------------------------------------------------------
+    // --- Tarefas ---
 
-    /// Associa uma tarefa ao projeto (exige projeto ativo).
-    /// @return false se a tarefa já estava associada.
-    bool addTask(TaskId taskId);
+    /* Exige status Active (senão lança std::logic_error), 
+       valida taskId (std::invalid_argument), 
+       retorna false se já estiver associada e, caso contrário, adiciona ao final de taskIds_, 
+       atualiza updatedAt_ e retorna true.*/
+    bool addTask(TaskId taskId, TimePoint now = Clock::now());
 
-    /// Remove a associação com uma tarefa (exige projeto não arquivado).
-    /// @return false se a tarefa não estava associada.
-    bool removeTask(TaskId taskId);
+    /* Exige projeto não arquivado (std::logic_error); 
+       retorna false se o ID não existir na lista ou remove o elemento, 
+       atualiza updatedAt_ e retorna true.*/
+    bool removeTask(const TaskId& taskId, TimePoint now = Clock::now());
 
-    // --- Transições de estado ---------------------------------------------
-    // Active -> Completed -> Active ; Active/Completed -> Archived -> Active
-    //
-    // A verificação de que todas as tarefas estão concluídas antes de
-    // completar o projeto é regra da camada de aplicação, pois o projeto
-    // conhece apenas os identificadores das tarefas.
+    // --- Transições de estado ---
 
-    void complete();
-    void reopen();
-    void archive();
-    void unarchive();
+    void complete(TimePoint now = Clock::now());
+    void reopen(TimePoint now = Clock::now());
+    void archive(TimePoint now = Clock::now());
+    void unarchive(TimePoint now = Clock::now());
 
-    /// Dois projetos são iguais quando possuem o mesmo identificador.
     friend bool operator==(const Project& a, const Project& b) noexcept {
         return a.id_ == b.id_;
     }
@@ -125,7 +126,7 @@ public:
 
 private:
     void ensureNotArchived(std::string_view operation) const;
-    void touch() noexcept;
+    void touch(TimePoint now) noexcept;
 
     ProjectId id_;
     std::string name_;
@@ -139,4 +140,4 @@ private:
 
 }  // namespace Project
 
-#endif // PROJECT_HPP
+#endif  // PROJECT_HPP

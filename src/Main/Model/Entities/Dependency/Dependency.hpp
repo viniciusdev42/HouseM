@@ -34,9 +34,32 @@ namespace Dependency {
 /// e é responsabilidade da camada de serviços, em conjunto com o grafo.
 ///
 /// Violações lançam std::invalid_argument.
+
+/// Removeu-se noexcept pois o construtor padrão de std::hash<std::string> não é garantido
+/// como noexcept pode lançar exceções,marcar hashValue() como noexcept pode resultar 
+/// em std::terminate se algo lançar dentro dele.
 class Dependency {
 public:
     using TaskId = ::Task::TaskId;
+
+     // --- Consultas ---------------------------------------------------------
+
+    /// Tarefa que precisa ser concluída primeiro (predecessor).
+    TaskId prerequisiteId() const { return prerequisiteId_; }
+
+    /// Tarefa bloqueada até a conclusão do pré-requisito (sucessor).
+    TaskId dependentId() const { return dependentId_; }
+
+    /// Indica se a tarefa participa desta dependência, em qualquer dos lados.
+    bool involves(TaskId taskId) const {
+        return taskId == prerequisiteId_ || taskId == dependentId_;
+    }
+
+    /// Valor de hash que combina os dois IDs (a ordem do par importa).
+    std::size_t hashValue() const;
+
+    /// Representação textual para logs e depuração, ex.: "1 -> 2".
+    std::string toString() const;
 
     /// Cria uma dependência: `dependentId` depende de `prerequisiteId`.
     /// @throws std::invalid_argument se algum ID for inválido ou se
@@ -45,41 +68,22 @@ public:
 
     /// Indica se o par forma uma dependência válida, sem lançar exceções.
     /// Útil para a camada de serviços validar a entrada antes de construir.
-    static bool isValidPair(TaskId prerequisiteId, TaskId dependentId) noexcept;
-
-    // --- Consultas ---------------------------------------------------------
-
-    /// Tarefa que precisa ser concluída primeiro (predecessor).
-    TaskId prerequisiteId() const noexcept { return prerequisiteId_; }
-
-    /// Tarefa bloqueada até a conclusão do pré-requisito (sucessor).
-    TaskId dependentId() const noexcept { return dependentId_; }
-
-    /// Indica se a tarefa participa desta dependência, em qualquer dos lados.
-    bool involves(TaskId taskId) const noexcept {
-        return taskId == prerequisiteId_ || taskId == dependentId_;
-    }
-
-    /// Valor de hash que combina os dois IDs (a ordem do par importa).
-    std::size_t hashValue() const noexcept;
-
-    /// Representação textual para logs e depuração, ex.: "1 -> 2".
-    std::string toString() const;
+    static bool isValidPair(TaskId prerequisiteId, TaskId dependentId);
 
     // --- Identidade --------------------------------------------------------
 
     /// Duas dependências são iguais se possuem o mesmo par de IDs.
-    friend bool operator==(const Dependency& lhs, const Dependency& rhs) noexcept {
+    friend bool operator==(const Dependency& lhs, const Dependency& rhs) {
         return lhs.prerequisiteId_ == rhs.prerequisiteId_ &&
                lhs.dependentId_ == rhs.dependentId_;
     }
-    friend bool operator!=(const Dependency& lhs, const Dependency& rhs) noexcept {
+    friend bool operator!=(const Dependency& lhs, const Dependency& rhs) {
         return !(lhs == rhs);
     }
 
     /// Ordem lexicográfica por (prerequisiteId, dependentId), útil para
     /// armazenar dependências em árvores de busca balanceadas.
-    friend bool operator<(const Dependency& lhs, const Dependency& rhs) noexcept {
+    friend bool operator<(const Dependency& lhs, const Dependency& rhs) {
         if (lhs.prerequisiteId_ != rhs.prerequisiteId_) {
             return lhs.prerequisiteId_ < rhs.prerequisiteId_;
         }
@@ -98,7 +102,7 @@ namespace std {
 /// Permite usar Dependency como chave em contêineres baseados em hash.
 template <>
 struct hash<Dependency::Dependency> {
-    std::size_t operator()(const Dependency::Dependency& dependency) const noexcept {
+    std::size_t operator()(const Dependency::Dependency& dependency) const {
         return dependency.hashValue();
     }
 };

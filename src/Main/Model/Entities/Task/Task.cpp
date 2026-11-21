@@ -8,6 +8,12 @@ bool isBlank(const std::string& text) noexcept {
     return std::all_of(text.begin(), text.end(), [](unsigned char c) { return std::isspace(c) != 0; });
 }
 
+void validateId(const TaskId& id) {
+    if (!id.isValid() || isBlank(id.value())) {
+        throw std::invalid_argument("Task: id must not be empty");
+    }
+}
+
 void validateTitle(const std::string& title) {
     if (isBlank(title)) {
         throw std::invalid_argument("Task: title must not be empty");
@@ -22,6 +28,16 @@ void validateDeadline(const std::optional<Task::TimePoint>& deadline, Task::Time
 }
 
 }  // namespace
+
+/*Implementação de kInvalidId*/
+const TaskId TaskId::kInvalidId{TaskId::InvalidTag{}}; 
+
+/* Construção do TaskId*/
+TaskId::TaskId(std::string value) : value_(std::move(value)) {
+    if (isBlank(value_)) {
+        throw std::invalid_argument("TaskId: value must not be empty or blank");
+    }
+}
 
 Task::Task(TaskId id,
            std::string title,
@@ -45,6 +61,7 @@ Task Task::create(TaskId id,
                   Priority priority,
                   std::optional<TimePoint> deadline,                  
                   TimePoint now) {
+    validateId(id);
     validateTitle(title);
     validateDeadline(deadline, now);
 
@@ -62,6 +79,9 @@ void Task::start(TimePoint now) {
 void Task::complete(TimePoint now) {
     if (isCompleted()) {
         throw std::logic_error("Task: task is already completed");
+    }
+    if (status_ != Status::InProgress) {
+        throw std::logic_error("Task: only an in-progress task can be completed");
     }
     status_ = Status::Completed;
     completedAt_ = now;

@@ -1,8 +1,8 @@
 #include "Project.hpp"
 
 #include <algorithm>
+#include <set>
 #include <stdexcept>
-#include <unordered_set>
 #include <utility>
 
 namespace Project {
@@ -42,15 +42,25 @@ void validateDescription(const std::string& description) {
     }
 }
 
-void validateTaskId(TaskId taskId) {
-    if (taskId == 0) {
-        throw std::invalid_argument("Project: o identificador da tarefa não pode ser zero.");
+void validateTaskId(const TaskId& taskId) {
+    if (!taskId.isValid() || trim(taskId.value()).empty()) {
+        throw std::invalid_argument("Project: o identificador da tarefa é inválido.");
     }
 }
 
-void validateDeadline(const std::optional<TimePoint>& deadline, TimePoint createdAt) {
-    if (deadline && *deadline < createdAt) {
-        throw std::invalid_argument("Project: o prazo não pode ser anterior à criação do projeto.");
+void validateDeadline(const std::optional<TimePoint>& deadline, TimePoint referenceTime) {
+    if (deadline && *deadline < referenceTime) {
+        throw std::invalid_argument("Project: o prazo não pode ser anterior à referência de tempo.");
+    }
+}
+
+void validateTaskIdsList(const std::vector<TaskId>& taskIds) {
+    std::set<TaskId> seen;
+    for (const TaskId& taskId : taskIds) {
+        validateTaskId(taskId);
+        if (!seen.insert(taskId).second) {
+            throw std::invalid_argument("Project: tarefa duplicada na lista de tarefas.");
+        }
     }
 }
 
@@ -100,15 +110,7 @@ Project Project::restore(ProjectId id,
         throw std::invalid_argument(
             "Project: a data de atualização não pode ser anterior à de criação.");
     }
-
-    std::unordered_set<TaskId> seen;
-    seen.reserve(taskIds.size());
-    for (const TaskId taskId : taskIds) {
-        validateTaskId(taskId);
-        if (!seen.insert(taskId).second) {
-            throw std::invalid_argument("Project: tarefa duplicada na lista de tarefas.");
-        }
-    }
+    validateTaskIdsList(taskIds);
 
     Project project(id, std::move(name), std::move(description), deadline, createdAt);
     project.status_ = status;
@@ -117,7 +119,7 @@ Project Project::restore(ProjectId id,
     return project;
 }
 
-bool Project::hasTask(TaskId taskId) const noexcept {
+bool Project::hasTask(const TaskId& taskId) const noexcept {
     return std::find(taskIds_.begin(), taskIds_.end(), taskId) != taskIds_.end();
 }
 
@@ -125,88 +127,88 @@ bool Project::isOverdue(TimePoint now) const noexcept {
     return status_ == ProjectStatus::Active && deadline_.has_value() && now > *deadline_;
 }
 
-void Project::rename(std::string newName) {
+void Project::rename(std::string newName, TimePoint now) {
     ensureNotArchived("renomear");
     name_ = normalizeName(newName);
-    touch();
+    touch(now);
 }
 
-void Project::setDescription(std::string newDescription) {
+void Project::setDescription(std::string newDescription, TimePoint now) {
     ensureNotArchived("alterar a descrição");
     validateDescription(newDescription);
     description_ = std::move(newDescription);
-    touch();
+    touch(now);
 }
 
-void Project::setDeadline(TimePoint deadline) {
+void Project::setDeadline(TimePoint deadline, TimePoint now) {
     ensureNotArchived("definir o prazo");
     validateDeadline(deadline, createdAt_);
     deadline_ = deadline;
-    touch();
+    touch(now);
 }
 
-void Project::clearDeadline() {
+void Project::clearDeadline(TimePoint now) {
     ensureNotArchived("remover o prazo");
     if (deadline_.has_value()) {
         deadline_.reset();
-        touch();
+        touch(now);
     }
 }
 
-bool Project::addTask(TaskId taskId) {
-    validateTaskId(taskId);
+bool Project::addTask(TaskId taskId, TimePoint now) {
     if (status_ != ProjectStatus::Active) {
         throw std::logic_error("Project: só é possível adicionar tarefas a um projeto ativo.");
     }
+    validateTaskId(taskId);
     if (hasTask(taskId)) {
         return false;
     }
-    taskIds_.push_back(taskId);
-    touch();
+    taskIds_.push_back(std::move(taskId));
+    touch(now);
     return true;
 }
 
-bool Project::removeTask(TaskId taskId) {
+bool Project::removeTask(const TaskId& taskId, TimePoint now) {
     ensureNotArchived("remover tarefas");
     const auto it = std::find(taskIds_.begin(), taskIds_.end(), taskId);
     if (it == taskIds_.end()) {
         return false;
     }
     taskIds_.erase(it);
-    touch();
+    touch(now);
     return true;
 }
 
-void Project::complete() {
+void Project::complete(TimePoint now) {
     if (status_ != ProjectStatus::Active) {
         throw std::logic_error("Project: só é possível concluir um projeto ativo.");
     }
     status_ = ProjectStatus::Completed;
-    touch();
+    touch(now);
 }
 
-void Project::reopen() {
+void Project::reopen(TimePoint now) {
     if (status_ != ProjectStatus::Completed) {
         throw std::logic_error("Project: só é possível reabrir um projeto concluído.");
     }
     status_ = ProjectStatus::Active;
-    touch();
+    touch(now);
 }
 
-void Project::archive() {
+void Project::archive(TimePoint now) {
     if (status_ == ProjectStatus::Archived) {
         throw std::logic_error("Project: o projeto já está arquivado.");
     }
     status_ = ProjectStatus::Archived;
-    touch();
+    touch(now);
 }
 
-void Project::unarchive() {
+void Project::unarchive(TimePoint now) {
     if (status_ != ProjectStatus::Archived) {
         throw std::logic_error("Project: só é possível desarquivar um projeto arquivado.");
     }
     status_ = ProjectStatus::Active;
-    touch();
+    touch(now);
 }
 
 void Project::ensureNotArchived(std::string_view operation) const {
@@ -216,8 +218,7 @@ void Project::ensureNotArchived(std::string_view operation) const {
     }
 }
 
-void Project::touch() noexcept {
-    const TimePoint now = Clock::now();
+void Project::touch(TimePoint now) noexcept {
     if (now > updatedAt_) {
         updatedAt_ = now;
     }

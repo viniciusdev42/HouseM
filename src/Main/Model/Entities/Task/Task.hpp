@@ -1,11 +1,9 @@
 #ifndef TASK_HPP
 #define TASK_HPP
 
-#include <array>
 #include <algorithm>
 #include <cctype>
 #include <chrono>
-#include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -15,18 +13,29 @@ namespace Task {
 
 // ---------------------------------------------------------------------------
 // TaskId: Value Object
+// Utiliza InvalidTag {} pra construir um valor sentinela (kInvalidId) a fim de 
+// representar ausência de valor.
+// Em vez de colocar value_ em um estado acidental,
+// a tag marca explicitamente o caminho de criação da variável sentinela
 // ---------------------------------------------------------------------------
 class TaskId {
+private:
+    
+    struct InvalidTag {};
+    
+    explicit TaskId(InvalidTag) noexcept : value_("") {}
+
+    std::string value_;
 public:
-    explicit TaskId(std::string value): value_(std::move(value)) {}
+    explicit TaskId(std::string value);
 
     const std::string& value() const noexcept { return value_; }
 
     // Regra/Constante para representar um ID inválido
-    inline static const TaskId kInvalidId {""}; // String vazia
+    static const TaskId kInvalidId; // String vazia
 
-    // Método auxiliar opcional para checar validade
-    bool is_valid() const noexcept {
+    // Método auxiliar para checar validade. Ele é chamado em vez kInvalidId.
+    bool isValid() const noexcept {
         return *this != kInvalidId;
     }
 
@@ -34,8 +43,6 @@ public:
     friend bool operator!=(const TaskId& lhs, const TaskId& rhs) noexcept { return !(lhs == rhs); }
     friend bool operator<(const TaskId& lhs, const TaskId& rhs) noexcept { return lhs.value_ < rhs.value_; }
 
-private:
-    std::string value_;
 };
 
 enum class Priority {
