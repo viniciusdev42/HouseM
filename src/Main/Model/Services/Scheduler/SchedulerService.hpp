@@ -8,7 +8,7 @@
 #include <set>
 #include <vector>
 
-#include "src/Model/Repositories/ITaskRepository.hpp"
+#include "src/Main/Model/Repositories/ITaskRepository.hpp"
 
 namespace SchedulerService {
 

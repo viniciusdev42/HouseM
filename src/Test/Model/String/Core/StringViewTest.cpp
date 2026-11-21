@@ -1,4 +1,4 @@
-#include "src/Model/Structures/String/View/StringView.hpp"
+#include "src/Main/Model/Structures/String/View/StringView.hpp"
 
 #include <cstddef>
 #include <iostream>

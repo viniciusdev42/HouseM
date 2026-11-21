@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Structures/Trie/Trie.hpp"
+#include "src/Main/Model/Structures/Trie/Trie.hpp"
 
 namespace {
 

@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "src/Storage/Page/Page.hpp"
-#include "src/Storage/Page/PageBuffer.hpp"
+#include "src/Main/Model/Storage/Page/Page.hpp"
+#include "src/Main/Model/Storage/Page/PageBuffer.hpp"
 
 /**
  * Gerenciador de Pages.

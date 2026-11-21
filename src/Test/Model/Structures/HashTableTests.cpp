@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "src/Model/Structures/HashTable/HashTable.hpp"
+#include "src/Main/Model/Structures/HashTable/HashTable.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini framework de testes

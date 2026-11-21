@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "src/Model/Structures/String/Core/View/StringView.hpp"
+#include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 
 using TokenizerView = StringView::StringView;
 

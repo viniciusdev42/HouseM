@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Storage/PageBuffer/PageBuffer.hpp"
+#include "src/Main/Model/Storage/PageBuffer/PageBuffer.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini-framework de testes

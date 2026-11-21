@@ -1,4 +1,4 @@
-#include "src/Model/Structures/Graph/Graph.hpp"
+#include "src/Main/Model/Structures/Graph/Graph.hpp"
 
 #include <iostream>
 #include <sstream>

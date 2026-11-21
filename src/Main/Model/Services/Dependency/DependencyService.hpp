@@ -7,9 +7,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "src/Model/Repositories/ITaskRepository.hpp"
-#include "src/Model/Entities/Dependency/Dependency.hpp"
-#include "src/Model/Structures/Graph/Graph.hpp"
+#include "src/Main/Model/Repositories/ITaskRepository.hpp"
+#include "src/Main/Model/Entities/Dependency/Dependency.hpp"
+#include "src/Main/Model/Structures/Graph/Graph.hpp"
 
 namespace DependencyService {
 

@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-#include "src/Model/Structures/String/Buffer/StringBuffer.hpp"
+#include "src/Main/Model/Structures/String/Buffer/StringBuffer.hpp"
 
 using SB = StringBuffer::StringBuffer;
 

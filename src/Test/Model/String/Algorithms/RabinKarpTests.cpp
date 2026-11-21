@@ -3,7 +3,7 @@
 #include <iostream>
 #include <optional>
 
-#include "src/Model/Structures/String/Algorithms/Karp/RabinKarp.hpp"
+#include "src/Main/Model/Structures/String/Algorithms/Karp/RabinKarp.hpp"
 
 namespace {
 

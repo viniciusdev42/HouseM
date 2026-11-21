@@ -7,8 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include "src/Model/Structures/BTree/BTree.hpp"
-#include "src/Model/Structures/BTree/BTreeNode.hpp"
+#include "src/Main/Model/Structures/BTree/BTree.hpp"
+#include "src/Main/Model/Structures/BTree/BTreeNode.hpp"
 
 // ===========================================================================
 // Mini framework de testes

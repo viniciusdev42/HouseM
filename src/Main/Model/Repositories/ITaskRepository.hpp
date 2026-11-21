@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "src/Model/Entities/Task/Task.hpp"
+#include "src/Main/Model/Entities/Task/Task.hpp"
 
 namespace TaskRepository {
 using Task = ::Task::Task;

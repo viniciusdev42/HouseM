@@ -3,7 +3,7 @@
 #include <cstring>
 #include <iostream>
 
-#include "src/Storage/PageManager/PageManager.hpp"
+#include "src/Main/Model/Storage/PageManager/PageManager.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini-infraestrutura de testes

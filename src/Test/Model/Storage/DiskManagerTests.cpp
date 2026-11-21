@@ -13,7 +13,7 @@
 #include <vector>
 
 #define private public
-#include "src/Storage/DiskManager/DiskManager.hpp"
+#include "src/Main/Model/Storage/DiskManager/DiskManager.hpp"
 #undef private
 
 namespace fs = std::filesystem;

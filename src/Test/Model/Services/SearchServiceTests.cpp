@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Services/Search/SearchService.hpp"
+#include "src/Main/Model/Services/Search/SearchService.hpp"
 
 namespace {
 

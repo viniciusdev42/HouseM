@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Repositories/ITaskRepository.hpp"
-#include "src/Model/Entities/Task/Task.hpp"
+#include "src/Main/Model/Repositories/ITaskRepository.hpp"
+#include "src/Main/Model/Entities/Task/Task.hpp"
 
 namespace TaskService {
 

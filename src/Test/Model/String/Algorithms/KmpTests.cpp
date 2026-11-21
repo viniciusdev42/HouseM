@@ -1,7 +1,7 @@
 #include <cstddef>
 #include <iostream>
 
-#include "src/Model/Structures/String/Algorithms/Kmp/Kmp.hpp"
+#include "src/Main/Model/Structures/String/Algorithms/Kmp/Kmp.hpp"
 
 namespace {
 

@@ -1,4 +1,4 @@
-#include "src/Model/Structures/BTree/BTreeNode.hpp"
+#include "src/Main/Model/Structures/BTree/BTreeNode.hpp"
 
 #include <iostream>
 #include <stdexcept>

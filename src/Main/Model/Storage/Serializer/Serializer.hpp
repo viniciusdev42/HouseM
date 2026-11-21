@@ -9,8 +9,8 @@
 #include <type_traits>
 #include <vector>
 
-#include "src/Model/Structures/BTree/BTreeNode.hpp"
-#include "src/Storage/Page/Page.hpp"
+#include "src/Main/Model/Structures/BTree/BTreeNode.hpp"
+#include "src/Main/Model/Storage/Page/Page.hpp"
 
 /**
  * Serializa um BTreeNode como um registro de uma Page e o reconstrói depois.

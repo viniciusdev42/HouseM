@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Structures/String/Tokenization/Tokenizer.hpp"
+#include "src/Main/Model/Structures/String/Tokenization/Tokenizer.hpp"
 
 using Tokenizer::Tokenizer;
 using Tokenizer::Text::PunctuationMode;

@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "src/Model/Structures/String/Core/Buffer/StringView.hpp"
+#include "src/Main/Model/Structures/String/Core/Buffer/StringView.hpp"
 
 using BufferView = StringView::StringView;
 

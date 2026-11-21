@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_set>
 
-#include "src/Model/Entities/Dependency/Dependency.hpp"
+#include "src/Main/Model/Entities/Dependency/Dependency.hpp"
 
 namespace {
 

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Services/Task/TaskService.hpp"
+#include "src/Main/Model/Services/Task/TaskService.hpp"
 
 // ---------------------------------------------------------------------------
 // Mini-harness de testes

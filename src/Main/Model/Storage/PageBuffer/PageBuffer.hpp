@@ -7,8 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "src/Storage/Page/Page.hpp"
-#include "src/Storage/DiskManager/DiskManager.hpp"
+#include "src/Main/Model/Storage/Page/Page.hpp"
+#include "src/Main/Model/Storage/DiskManager/DiskManager.hpp"
 
 /**
  * Buffer pool de Pages em memória, com política de substituição LRU.

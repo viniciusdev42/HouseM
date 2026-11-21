@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Repositories/ITaskRepository.hpp"  
+#include "src/Main/Model/Repositories/ITaskRepository.hpp"  
 
 // ---------------------------------------------------------------------------
 // Aliases (o namespace e a classe se chamam Task: Task::Task)

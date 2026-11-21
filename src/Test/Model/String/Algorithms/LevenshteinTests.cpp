@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <iostream>
 
-#include "src/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
+#include "src/Main/Model/Structures/String/Algorithms/Levenshtein/Levenshtein.hpp"
 
 namespace {
 

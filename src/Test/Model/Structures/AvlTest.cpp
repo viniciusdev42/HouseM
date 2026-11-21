@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include "src/Model/Structures/Avl/Avl.hpp"
+#include "src/Main/Model/Structures/Avl/Avl.hpp"
 
 // ----------------------------------------------------------------------------
 // Mini-framework: CHECK registra falhas sem interromper o teste.

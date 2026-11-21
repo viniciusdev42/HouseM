@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "src/Model/Structures/String/Normalization/Normalizer.hpp"
+#include "src/Main/Model/Structures/String/Normalization/Normalizer.hpp"
 
 namespace {
 

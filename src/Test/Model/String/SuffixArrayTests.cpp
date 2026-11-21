@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Structures/String/Indexing/SuffixArray.hpp"
+#include "src/Main/Model/Structures/String/Indexing/SuffixArray.hpp"
 
 namespace {
 

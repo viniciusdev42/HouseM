@@ -1,4 +1,4 @@
-#include "src/Model/Entities/Task/Task.hpp"
+#include "src/Main/Model/Entities/Task/Task.hpp"
 
 #include <iostream>
 #include <stdexcept>

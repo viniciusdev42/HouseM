@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Structures/String/Core/DynamicArray.hpp"
+#include "src/Main/Model/Structures/String/Core/DynamicArray.hpp"
 
 // O namespace e a classe se chamam DynamicArray: usamos um alias para evitar ambiguidade.
 template <typename T>

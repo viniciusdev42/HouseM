@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Services/Dependency/DependencyService.hpp"
+#include "src/Main/Model/Services/Dependency/DependencyService.hpp"
 
 using Dependency::DependencyService;
 using TaskId = DependencyService::TaskId;

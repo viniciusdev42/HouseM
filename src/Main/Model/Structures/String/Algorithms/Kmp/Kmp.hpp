@@ -3,8 +3,8 @@
 
 #include <cstddef> 
 
-#include "src/Model/Structures/String/Core/View/StringView.hpp"
-#include "src/Model/Structures/String/Core/Array/DynamicArray.hpp"
+#include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
+#include "src/Main/Model/Structures/String/Core/Array/DynamicArray.hpp"
 
 using KView = StringView::StringView;
 using DynamicK = DynamicArray::IndexArray;

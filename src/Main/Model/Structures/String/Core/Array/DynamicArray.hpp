@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "src/Model/Structures/String/Core/View/StringView.hpp"
+#include "src/Main/Model/Structures/String/Core/View/StringView.hpp"
 
 namespace DynamicArray {
 

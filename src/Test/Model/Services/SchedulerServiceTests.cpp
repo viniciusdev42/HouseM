@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "src/Model/Services/Scheduler/SchedulerService.hpp"
+#include "src/Main/Model/Services/Scheduler/SchedulerService.hpp"
 
 namespace {
 

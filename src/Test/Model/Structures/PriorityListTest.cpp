@@ -1,4 +1,4 @@
-#include "src/Model/Structures/PriorityList/PriorityList.hpp"
+#include "src/Main/Model/Structures/PriorityList/PriorityList.hpp"
 
 #include <iostream>
 #include <stdexcept>
