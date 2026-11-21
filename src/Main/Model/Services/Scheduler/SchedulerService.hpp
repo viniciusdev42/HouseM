@@ -48,7 +48,7 @@ struct ScheduledTaskOrder {
 // ---------------------------------------------------------------------------
 class SchedulerService {
 public:
-    using Repository = ITaskRepository::ITaskRepository;
+    using Repository = TaskRepository::ITaskRepository;
     using Clock = Repository::Clock;
     using TimePoint = Repository::TimePoint;
     using Duration = Clock::duration;

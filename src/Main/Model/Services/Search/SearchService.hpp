@@ -37,7 +37,7 @@ class SearchService {
 public:
     using Task = ::Task::Task;
     using TaskId = ::Task::TaskId;
-    using Repository = ::ITaskRepository::ITaskRepository;
+    using Repository = ::TaskRepository::ITaskRepository;
     using TextNormalizer = ::Normalizer::Normalizer;
     using TimePoint = Repository::TimePoint;
 

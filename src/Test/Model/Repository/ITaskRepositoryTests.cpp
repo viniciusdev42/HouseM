@@ -19,9 +19,9 @@ using Priority = Task::Priority;
 using Clock = TaskEntity::Clock;
 using TimePoint = TaskEntity::TimePoint;
 
-using ITaskRepository::DuplicateTaskError;
-using ITaskRepository::InMemoryTaskRepository;
-using ITaskRepository::TaskNotFoundError;
+using TaskRepository::DuplicateTaskError;
+using TaskRepository::InMemoryTaskRepository;
+using TaskRepository::TaskNotFoundError;
 
 constexpr Status kOpen = Status::Pending;
 constexpr Status kDone = Status::Completed;

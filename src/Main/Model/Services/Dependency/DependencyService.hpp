@@ -51,7 +51,7 @@ namespace DependencyService {
 class DependencyService {
 public:
     using TaskId = ::Task::TaskId;
-    using TaskRepository = ::ITaskRepository::ITaskRepository;
+    using TaskRepository = ::TaskRepository::ITaskRepository;
 
     /// O repositório deve sobreviver ao serviço.
     explicit DependencyService(const TaskRepository& repository);
@@ -61,7 +61,7 @@ public:
     /// Registra que `dependentId` depende de `prerequisiteId`.
     /// @return false se a dependência já existia.
     /// @throws std::invalid_argument se o par for inválido (ex.: mesma tarefa).
-    /// @throws ITaskRepository::TaskNotFoundError se alguma tarefa não existir
+    /// @throws TaskRepository::TaskNotFoundError se alguma tarefa não existir
     ///         no repositório.
     /// @throws std::logic_error se a dependência criaria um ciclo.
     bool addDependency(const TaskId& prerequisiteId, const TaskId& dependentId);
@@ -97,20 +97,20 @@ public:
     bool detectCycle(const TaskId& prerequisiteId, const TaskId& dependentId) const;
 
     /// Tarefas não concluídas com ao menos um pré-requisito fora de `completedTasks`.
-    /// @throws ITaskRepository::TaskNotFoundError se uma tarefa rastreada
+    /// @throws TaskRepository::TaskNotFoundError se uma tarefa rastreada
     ///         não existir mais no repositório.
     std::vector<Task> getBlockedTasks(const std::set<TaskId>& completedTasks) const;
 
     /// Tarefas não concluídas com todos os pré-requisitos em `completedTasks`.
     /// Considera somente tarefas que participam de alguma dependência.
-    /// @throws ITaskRepository::TaskNotFoundError (idem getBlockedTasks).
+    /// @throws TaskRepository::TaskNotFoundError (idem getBlockedTasks).
     std::vector<Task> getAvailableTasks(const std::set<TaskId>& completedTasks) const;
 
     /// Alias com a grafia usada no enunciado ("Avaliable").
     std::vector<Task> getAvaliableTasks(const std::set<TaskId>& completedTasks) const;
 
     /// Ordem válida de execução: pré-requisitos antes de seus dependentes.
-    /// @throws ITaskRepository::TaskNotFoundError (idem getBlockedTasks).
+    /// @throws TaskRepository::TaskNotFoundError (idem getBlockedTasks).
     /// @throws std::logic_error se houver ciclo (não ocorre com o invariante).
     std::vector<Task> getTopologicalOrder() const;
 

@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cstddef>
-#include <mutex>
 #include <optional>
 #include <set>
 #include <shared_mutex>
@@ -14,7 +13,7 @@
 
 #include "src/Model/Entities/Task/Task.hpp"
 
-namespace ITaskRepository {
+namespace TaskRepository {
 using Task = ::Task::Task;
 using TaskId = ::Task::TaskId;
 using Status = ::Task::Status;
@@ -124,7 +123,13 @@ public:
         if (!inserted) {
             throw DuplicateTaskError(task.id());
         }
-        addToIndexes(it->second);
+        try {
+            addToIndexes(it->second);
+        } catch (...) {
+            removeFromIndexes(it->second);
+            tasks_.erase(it);
+            throw;
+        }
     }
 
     void update(const Task& task) override {
@@ -134,11 +139,21 @@ public:
         if (it == tasks_.end()) {
             throw TaskNotFoundError(task.id());
         }
-        // Os índices dependem dos campos da cópia armazenada: remove as chaves
-        // antigas antes de sobrescrever e reinsere com as novas.
-        removeFromIndexes(it->second);
-        it->second = task;
-        addToIndexes(it->second);
+        const Task previousTask = it->second;
+        removeFromIndexes(previousTask);
+        try {
+            it->second = task;
+            addToIndexes(it->second);
+        } catch (...) {
+            removeFromIndexes(it->second);
+            it->second = previousTask;
+            try {
+                addToIndexes(it->second);
+            } catch (...) {
+                // Evita std::terminate durante o desenrolamento de exceção.
+            }
+            throw;
+        }
     }
 
     bool remove(const TaskId& id) override {
@@ -309,5 +324,5 @@ private:
     std::array<TimeIndex, kPriorityCount> byPriority_;
 };
 
-}  // namespace ITaskRepository
+}  // namespace TaskRepository
 #endif  // TASK_REPOSITORY_HPP

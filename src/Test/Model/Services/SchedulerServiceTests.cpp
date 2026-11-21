@@ -12,7 +12,7 @@ namespace {
 using TaskEntity = ::Task::Task;
 using ::Task::Priority;
 using ::Task::TaskId;
-using Repo = ::ITaskRepository::InMemoryTaskRepository;
+using Repository = ::TaskRepository::InMemoryTaskRepository;
 using Scheduler = ::SchedulerService::SchedulerService;
 using ::SchedulerService::ScheduledTask;
 using TimePoint = TaskEntity::TimePoint;
@@ -90,7 +90,7 @@ using Ids = std::vector<std::string>;
 
 // --------------------------------- testes ----------------------------------
 void testBuildIgnoresCompletedAndRejectsSecondBuild() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("a", Priority::Low));
     repo.add(makeCompleted("done"));
 
@@ -104,7 +104,7 @@ void testBuildIgnoresCompletedAndRejectsSecondBuild() {
 }
 
 void testOrdering() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("low", Priority::Low, 1));
     repo.add(makeTask("high-late", Priority::High, 10));
     repo.add(makeTask("high-early", Priority::High, 2));
@@ -121,7 +121,7 @@ void testOrdering() {
 }
 
 void testGetNextTask() {
-    Repo repo;
+    Repository repo;
     Scheduler scheduler{repo};
     scheduler.buildSchedule();
     CHECK(!scheduler.getNextTask().has_value());
@@ -136,7 +136,7 @@ void testGetNextTask() {
 }
 
 void testQueries() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("low", Priority::Low, 100));
     repo.add(makeTask("med", Priority::Medium, 10));
     repo.add(makeTask("high", Priority::High));
@@ -163,7 +163,7 @@ void testQueries() {
 }
 
 void testUpdateTaskPriority() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("a", Priority::Low));
     repo.add(makeTask("b", Priority::High));
 
@@ -185,7 +185,7 @@ void testUpdateTaskPriority() {
 }
 
 void testRemoveTaskFromScheduler() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("a", Priority::Low));
     repo.add(makeTask("b", Priority::High));
 
@@ -200,7 +200,7 @@ void testRemoveTaskFromScheduler() {
 }
 
 void testRefreshPreservesPriorityAndSyncs() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("a", Priority::Low));
     repo.add(makeTask("b", Priority::Low));
     repo.add(makeTask("c", Priority::Low));
@@ -221,7 +221,7 @@ void testRefreshPreservesPriorityAndSyncs() {
 }
 
 void testRebuildDiscardsPriorityChanges() {
-    Repo repo;
+    Repository repo;
     repo.add(makeTask("a", Priority::Low));
     repo.add(makeTask("b", Priority::High));
 
